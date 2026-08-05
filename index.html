@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thẩm Định Hồ Sơ Tuyển Sinh (Workspace)</title>
-    <!-- Thư viện PapaParse đọc CSV từ Google Sheets -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
-    <!-- KẾT NỐI TỪ ĐIỂN TỪ REPO WEB1 (SINGLE SOURCE OF TRUTH) -->
     <script src="https://thinhnt291.github.io/xettuyen/data_config.js"></script>
     
     <style>
@@ -22,20 +19,15 @@
         .kpi-card { background: #eef7f6; border: 1px solid #b2ebf2; border-left: 5px solid var(--primary); border-radius: 6px; padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; }
         .kpi-title { font-size: 12px; color: #555; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
         .kpi-value { font-size: 26px; font-weight: bold; color: var(--primary-dark); }
-        .kpi-sub { font-size: 12px; color: #666; margin-top: 4px; font-weight: 500; }
 
         .filter-box { background: #f8fbfb; border: 1px solid #d0e8e6; border-radius: 6px; padding: 12px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; }
         .filter-group label { font-size: 11px; font-weight: bold; color: #444; text-transform: uppercase; }
-        .filter-group input, .filter-group select { padding: 7px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; outline: none; background: #fff; }
-        .btn-filter { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .btn-filter:hover { background: var(--primary-dark); }
-        .btn-reset { background: #95a5a6; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .filter-group input, .filter-group select { padding: 7px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; outline: none; }
+        .btn-filter, .btn-reset, .btn-export { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .btn-reset { background: #95a5a6; } .btn-export { background: #27ae60; }
 
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
-        .btn-export { background: #27ae60; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
-        .btn-export:hover { background: #219150; }
-
         .table-wrapper { max-height: 650px; overflow-y: auto; overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 4px; position: relative; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1150px; }
         th { position: sticky; top: 0; background: #e0f2f1; color: #006666; font-weight: 700; padding: 8px 6px; text-align: left; border-bottom: 2px solid #b2ebf2; z-index: 10; white-space: nowrap; }
@@ -44,54 +36,43 @@
         
         .badge { padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; display: inline-block; text-align: center; min-width: 70px; white-space: nowrap; }
         .badge-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .badge-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .badge-warning { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; }
         
-        .btn-link { background: #e3f2fd; color: #0288d1; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 11px; font-weight: bold; border: 1px solid #b3e5fc; display: inline-block; white-space: nowrap; cursor: pointer;}
-        .btn-link:hover { background: #0288d1; color: white; }
-        
-        .btn-review { background: #f57c00; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; border: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: 0.2s; white-space: nowrap; }
-        .btn-review:hover { background: #e65100; }
+        .btn-review { background: #f57c00; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 11px; border: none; cursor: pointer; transition: 0.2s; white-space: nowrap; }
         .btn-review.pass-state { background: #2e7d32; }
         .btn-review.warn-state { background: #c62828; }
 
-        /* MODAL WORKSPACE REDESIGNED */
+        /* MODAL WORKSPACE - REDESIGNED FULL WIDTH */
         .workspace-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 9999; }
-        .workspace-modal { background: #fff; width: 95%; max-width: 900px; max-height: 90vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .workspace-modal { background: #fff; width: 95%; max-width: 1100px; max-height: 90vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .ws-header { background: #004d40; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 16px; }
-        .ws-body { padding: 20px; overflow-y: auto; background: #fafafa; }
+        .ws-body { padding: 25px; overflow-y: auto; background: #fafafa; }
         
-        .ws-section-title { font-size: 15px; color: var(--primary-dark); border-bottom: 2px solid #b2ebf2; padding-bottom: 6px; margin: 20px 0 12px 0; font-weight: bold; text-transform: uppercase; }
+        .ws-section-title { font-size: 15px; color: var(--primary-dark); border-bottom: 2px solid #b2ebf2; padding-bottom: 6px; margin: 25px 0 15px 0; font-weight: bold; text-transform: uppercase; }
         .ws-section-title:first-child { margin-top: 0; }
         
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
         .info-card { background: #fff; padding: 12px 15px; border-radius: 6px; border: 1px solid #d0e8e6; display: flex; flex-direction: column; gap: 4px; }
         .info-label { font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase; }
-        .info-val { font-size: 14px; color: #111; font-weight: 600; }
+        .info-val { font-size: 15px; color: #111; font-weight: 600; }
         .info-val.highlight { color: #d84315; font-size: 18px; }
+        
+        .btn-link { color: #0288d1; text-decoration: none; font-weight: bold; } .btn-link:hover { text-decoration: underline; }
 
         .combo-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; }
-        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 8px; text-align: center; font-size: 13px; }
+        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 10px; text-align: center; font-size: 14px; }
         .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
         .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffca28; font-weight: bold; }
 
-        .cross-check-box { background: #fff3e0; border: 1px dashed #ffb74d; padding: 12px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
-        .cross-check-box select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ffb74d; outline: none; font-weight: bold; color: #e65100; }
+        .cross-check-box { background: #fff3e0; border: 1px dashed #ffb74d; padding: 15px; border-radius: 6px; margin-top: 25px; display: flex; align-items: center; gap: 15px; }
+        .cross-check-box select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ffb74d; font-weight: bold; color: #e65100; font-size: 14px; outline:none;}
 
-        .action-buttons { margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap; }
-        .btn-action { flex: 1; padding: 12px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: 0.2s; min-width: 200px; text-align: center; }
-        .btn-action.pass { background: #2e7d32; }
-        .btn-action.pass:hover:not(:disabled) { background: #1b5e20; }
-        .btn-action.missing { background: #c62828; }
-        .btn-action.missing:hover:not(:disabled) { background: #b71c1c; }
-        .btn-action.save { background: #1565c0; }
-        .btn-action.save:hover:not(:disabled) { background: #0d47a1; }
-        .btn-action:disabled { background: #cccccc !important; color: #666 !important; cursor: not-allowed; box-shadow: none; border: 1px solid #bbb; }
-
-        @media (max-width: 768px) {
-            .info-grid { grid-template-columns: 1fr; }
-            .action-buttons { flex-direction: column; }
-        }
+        .action-buttons { margin-top: 30px; display: flex; gap: 15px; justify-content: space-between; }
+        .btn-action { flex: 1; padding: 14px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: 0.2s; text-align: center; }
+        .btn-action.pass { background: #2e7d32; } .btn-action.pass:hover:not(:disabled) { background: #1b5e20; }
+        .btn-action.missing { background: #c62828; } .btn-action.missing:hover:not(:disabled) { background: #b71c1c; }
+        .btn-action.save { background: #1565c0; } .btn-action.save:hover:not(:disabled) { background: #0d47a1; }
+        .btn-action:disabled { background: #cccccc !important; color: #666 !important; cursor: not-allowed; border: 1px solid #bbb; }
     </style>
 </head>
 <body>
@@ -99,43 +80,33 @@
 <div class="container">
     <h1>
         <span>📊 BAN THẨM ĐỊNH HỒ SƠ TUYỂN SINH</span>
-        <span style="font-size: 12px; font-weight: normal; color: #666;" id="last-updated">⏳ Đang tải dữ liệu...</span>
+        <span style="font-size: 12px; font-weight: normal; color: #666;" id="last-updated">⏳ Đang lấy dữ liệu...</span>
     </h1>
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <span class="kpi-title">📁 Tổng số hồ sơ</span>
+            <span class="kpi-title">📁 Tổng số hồ sơ lọc được</span>
             <span class="kpi-value" id="kpi-total">0</span>
-            <span class="kpi-sub">Theo khu vực bộ lọc hiện tại</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-title">📑 Số thí sinh đủ hồ sơ</span>
+            <span class="kpi-title">📑 Hồ sơ đủ điều kiện</span>
             <span class="kpi-value" style="color: #2980b9;" id="kpi-docs">0</span>
-            <span class="kpi-sub" id="kpi-docs-rate">Chiếm 0%</span>
         </div>
     </div>
 
     <div class="filter-box">
-        <div class="filter-group"><label>Từ ngày:</label><input type="date" id="filter-from"></div>
-        <div class="filter-group"><label>Đến ngày:</label><input type="date" id="filter-to"></div>
         <div class="filter-group"><label>Ngành đào tạo:</label><select id="filter-nganh"><option value="">-- Tất cả ngành --</option></select></div>
-        <div class="filter-group"><label>Đối tượng đầu vào:</label><select id="filter-doituong"><option value="">-- Tất cả đối tượng --</option></select></div>
+        <div class="filter-group"><label>Đối tượng:</label><select id="filter-doituong"><option value="">-- Tất cả --</option></select></div>
         <div class="filter-group"><label>Trạng thái hồ sơ:</label>
-            <select id="filter-hoso">
-                <option value="">-- Tất cả --</option>
-                <option value="Đủ">Đủ hồ sơ / Hợp lệ</option>
-                <option value="Thiếu">Thiếu hồ sơ / Bổ sung</option>
-            </select>
+            <select id="filter-hoso"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
         </div>
-        <div style="display: flex; gap: 8px; flex: 1; min-width: 180px;">
-            <button class="btn-filter" style="flex: 2;" onclick="applyFilters()">🔍 Lọc</button>
-            <button class="btn-reset" style="flex: 1;" onclick="resetFilters()">🔄 Xóa</button>
-        </div>
+        <button class="btn-filter" onclick="applyFilters()">🔍 Lọc</button>
+        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa</button>
     </div>
 
     <div class="action-bar">
-        <div style="font-weight: bold; color: #555; font-size: 13px;">👉 Đang hiển thị <span id="row-count" style="color: var(--primary); font-size: 16px; font-weight: bold;">0</span> hồ sơ</div>
-        <div><button class="btn-export" onclick="exportExcel()">📥 Xuất Danh sách hiện tại</button></div>
+        <div style="font-weight: bold; color: #555; font-size: 13px;">👉 Đang hiển thị <span id="row-count" style="color: var(--primary); font-size: 16px;">0</span> hồ sơ</div>
+        <button class="btn-export" onclick="exportExcel()">📥 Xuất Excel</button>
     </div>
 
     <div class="table-wrapper">
@@ -149,11 +120,11 @@
                     <th>NGÀNH ĐÀO TẠO</th>
                     <th>ĐỐI TƯỢNG ĐẦU VÀO</th>
                     <th style="width: 110px; text-align: center;">HỒ SƠ</th>
-                    <th style="width: 130px; text-align: center;">THẨM ĐỊNH</th>
+                    <th style="width: 140px; text-align: center;">THẨM ĐỊNH</th>
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="8" style="text-align:center; padding: 25px; font-weight:bold; color:#0288d1;">⏳ Đang kết nối...</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding: 25px;">⏳ Đang kết nối tới Google Cloud...</td></tr>
             </tbody>
         </table>
     </div>
@@ -163,104 +134,87 @@
 <div id="workspaceModal" class="workspace-overlay">
     <div class="workspace-modal">
         <div class="ws-header">
-            <span>HỒ SƠ THÍ SINH: <span id="ws-fullname" style="color: #ffd54f;"></span></span>
+            <span>HỒ SƠ THÍ SINH: <span id="ws-fullname-title" style="color: #ffd54f;"></span></span>
             <span style="cursor: pointer; font-size: 24px;" onclick="closeWorkspace()">✖</span>
         </div>
         <div class="ws-body">
             
+            <div class="ws-section-title">I. THÔNG TIN THÍ SINH</div>
+            <div class="info-grid">
+                <div class="info-card"><span class="info-label">Số CCCD</span><span class="info-val" id="ws-cccd"></span></div>
+                <div class="info-card"><span class="info-label">Họ và Tên</span><span class="info-val" id="ws-fullname"></span></div>
+                <div class="info-card"><span class="info-label">Mã SV Đề Xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
+                <div class="info-card"><span class="info-label">Ngành Xét Tuyển</span><span class="info-val" id="ws-nganh"></span></div>
+                <div class="info-card"><span class="info-label">Khu vực / Đối tượng UT</span><span class="info-val" id="ws-kvdt"></span></div>
+                <div class="info-card"><span class="info-label">Link Minh Chứng</span><span class="info-val" id="ws-link"></span></div>
+            </div>
+
+            <div class="ws-section-title">II. TRẠNG THÁI HỒ SƠ</div>
+            <div class="info-card" id="ws-hoso-status" style="font-size: 15px; font-weight: bold;"></div>
+
+            <div class="ws-section-title">III. KẾT QUẢ ĐIỂM SỐ</div>
+            <div id="ws-score-summary" class="info-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
+            
+            <div id="ws-combo-list-container"></div>
+
             <div class="cross-check-box">
                 <span style="font-weight:bold; color:#e65100;">🔄 Khảo sát khả năng đỗ ngành khác:</span>
                 <select id="ws-other-major" onchange="handleCrossCheckChange()">
-                    <option value="">-- Quay lại Ngành gốc thí sinh đăng ký --</option>
-                    <!-- Sẽ được điền tự động từ DICT_NGANH -->
+                    <option value="">-- Trở lại ngành gốc của thí sinh --</option>
                 </select>
             </div>
 
-            <div class="ws-section-title">THÔNG TIN CHUNG</div>
-            <div class="info-grid">
-                <div class="info-card"><span class="info-label">Số CCCD</span><span class="info-val" id="ws-cccd"></span></div>
-                <div class="info-card"><span class="info-label">Mã SV Đề Xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
-                <div class="info-card"><span class="info-label">Ngành Xét Tuyển</span><span class="info-val" id="ws-nganh"></span></div>
-                <div class="info-card"><span class="info-label">Khu vực / Đối tượng ưu tiên</span><span class="info-val" id="ws-kvdt"></span></div>
-                <div class="info-card"><span class="info-label">Trạng thái Hồ sơ</span><span class="info-val" id="ws-hoso-status"></span></div>
-                <div class="info-card"><span class="info-label">Minh chứng gốc</span><span class="info-val" id="ws-link-box"></span></div>
-            </div>
-
-            <div class="ws-section-title">KẾT QUẢ ĐIỂM SỐ</div>
-            <div id="ws-score-summary" class="info-grid" style="margin-bottom: 15px;"></div>
-            
-            <div id="ws-combo-list-container">
-                <!-- Bảng chi tiết tổ hợp sinh ra từ JS -->
-            </div>
-
             <div class="action-buttons">
+                <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ BÁO THIẾU HỒ SƠ</button>
                 <button class="btn-action pass" id="btnApprove" onclick="triggerApprove()">✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN</button>
-                <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ BÁO THIẾU HỒ SƠ (YÊU CẦU BS)</button>
-                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 CHỐT KẾT QUẢ VÀO SHEET "KETQUA"</button>
+                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 CHỐT KẾT QUẢ VÀO KETQUA</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // =========================================================================
-    // 1. CẤU HÌNH API KẾT NỐI
-    // =========================================================================
+    // 1. CẤU HÌNH API
     const SHEET_ID = "1DBYrAObOLR7jtj74B_jBHVDf2I07UXc8zpgppvbabbs";
     const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0&t=${new Date().getTime()}`;
-    
     const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
     const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
     const API_LUU_KETQUA = "https://script.google.com/macros/s/AKfycbziIyPUBk9lA6WnnI0W7U5xZ2X6_kIACnPlHLQPkuN0Bp6B776_pflfKsryfqfgBlRO/exec"; 
 
+    // TỪ ĐIỂN MÃ HÓA (Chuẩn xác theo ảnh cung cấp)
     const MAP_HE_DAO_TAO = { "Cao đẳng": "01", "Đại học chính quy": "02", "Liên thông ĐH - ĐH (Văn bằng 2)": "03", "Thường xuyên: Phương thức ĐTTX": "04", "Liên thông từ CĐ lên ĐH": "05", "Thường xuyên: Phương thức VLVH": "06", "Thạc sĩ": "07", "Khóa ngắn hạn cấp chứng chỉ": "08" };
     const MAP_HINH_THUC = { "Chính quy đại trà": "1", "Liên thông ĐH - ĐH chính quy (VB 2)": "2", "Thường xuyên: Phương thức ĐTTX": "3", "Thường xuyên: Phương thức VLVH": "4" };
 
     let rawData = []; let filteredData = []; let currentCandidateIndex = -1;
 
     window.onload = () => {
-        document.getElementById('filter-from').value = "2026-01-01";
-        document.getElementById('filter-to').value = new Date().toISOString().slice(0, 10);
         fetchCSVData();
-        // Load danh sách ngành vào dropdown khảo sát
         const crossCheckSelect = document.getElementById('ws-other-major');
-        Object.keys(DICT_NGANH).forEach(nganh => {
-            crossCheckSelect.appendChild(new Option(nganh, nganh));
-        });
+        Object.keys(DICT_NGANH).forEach(nganh => crossCheckSelect.appendChild(new Option(nganh, nganh)));
     };
 
     function fetchCSVData() {
         Papa.parse(CSV_URL, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(results) {
+                // Thêm state _appState và _saved để quản lý nút bấm
                 rawData = results.data.map(row => { row._appState = null; row._saved = false; return row; });
                 filteredData = [...rawData];
                 populateFilters(); applyFilters();
-                const now = new Date();
-                document.getElementById('last-updated').innerText = `✔ Đồng bộ thành công: ${now.toLocaleTimeString('vi-VN')}`;
-            },
-            error: function(err) {
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="8" style="text-align:center; color: #d32f2f; font-weight:bold;">❌ Không thể kết nối Dữ liệu.</td></tr>`;
+                document.getElementById('last-updated').innerText = `✔ Đồng bộ: ${new Date().toLocaleTimeString('vi-VN')}`;
             }
         });
     }
 
+    // Nâng cấp getVal để quét được cả chữ thường (CCCD vs SỐ CCCD, Năm xét tuyển vs NĂM XÉT TUYỂN)
     function getVal(row, keys) {
-        for (let k of keys) { for (let rowKey in row) { if (rowKey.trim().toUpperCase() === k.trim().toUpperCase()) return (row[rowKey] || "").trim(); } } return "";
-    }
-
-    function formatOnlyDate(timeStr) {
-        if (!timeStr) return ""; const cleanStr = timeStr.trim().split(' ')[0];
-        if (cleanStr.includes('-')) { const p = cleanStr.split('-'); return `${p[2].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[0]}`; }
-        if (cleanStr.includes('/')) { const p = cleanStr.split('/'); if (p.length === 3) { let p0=parseInt(p[0]), p1=parseInt(p[1]), p2=parseInt(p[2]); if (p1>12) return `${p1.toString().padStart(2,'0')}/${p0.toString().padStart(2,'0')}/${p2}`; return `${p0.toString().padStart(2,'0')}/${p1.toString().padStart(2,'0')}/${p2}`; } }
-        return cleanStr;
-    }
-
-    function parseVnDate(dateStr) {
-        if (!dateStr) return null; const cleanStr = dateStr.trim().split(' ')[0];
-        if (cleanStr.includes('-')) { const parts = cleanStr.split('-'); return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])); }
-        if (cleanStr.includes('/')) { const parts = cleanStr.split('/'); if (parts.length !== 3) return null; let p0 = parseInt(parts[0]), p1 = parseInt(parts[1]), p2 = parseInt(parts[2]); if (p0 > 12) return new Date(p2, p1 - 1, p0); else if (p1 > 12) return new Date(p2, p0 - 1, p1); else return new Date(p2, p1 - 1, p0); }
-        return null;
+        for (let k of keys) {
+            let searchKey = k.trim().toUpperCase();
+            for (let rowKey in row) { 
+                if (rowKey.trim().toUpperCase() === searchKey) return (row[rowKey] || "").trim(); 
+            } 
+        } 
+        return "";
     }
 
     function populateFilters() {
@@ -274,15 +228,12 @@
     }
 
     function applyFilters() {
-        const fDate = parseVnDate(document.getElementById('filter-from').value); if(fDate) fDate.setHours(0,0,0,0);
-        const tDate = parseVnDate(document.getElementById('filter-to').value); if(tDate) tDate.setHours(23,59,59,999);
         const nVal = document.getElementById('filter-nganh').value;
         const dVal = document.getElementById('filter-doituong').value;
         const hVal = document.getElementById('filter-hoso').value.toLowerCase();
 
         filteredData = rawData.filter(row => {
-            if (fDate || tDate) { const rowDate = parseVnDate(getVal(row, ["TIME"])); if (!rowDate) return false; if (fDate && rowDate < fDate) return false; if (tDate && rowDate > tDate) return false; }
-            if (nVal && getVal(row, ["NGÀNH"]) !== nVal) return false;
+            if (nVal && getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]) !== nVal) return false;
             if (dVal && getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO"]) !== dVal) return false;
             const hs = getVal(row, ["HỒ SƠ"]).toLowerCase();
             if (hVal === "đủ" && !hs.includes("đủ")) return false;
@@ -291,42 +242,35 @@
         });
         
         document.getElementById('kpi-total').innerText = filteredData.length;
-        let docsCount = filteredData.filter(r => getVal(r, ["HỒ SƠ"]).toLowerCase().includes("đủ")).length;
-        document.getElementById('kpi-docs').innerText = docsCount;
-        document.getElementById('kpi-docs-rate').innerText = `Chiếm ${filteredData.length > 0 ? (docsCount/filteredData.length*100).toFixed(1) : 0}%`;
-        
+        document.getElementById('kpi-docs').innerText = filteredData.filter(r => getVal(r, ["HỒ SƠ"]).toLowerCase().includes("đủ")).length;
         renderTable(); document.getElementById('row-count').innerText = filteredData.length;
     }
     
     function resetFilters() { document.querySelectorAll('.filter-box select').forEach(s => s.value = ''); applyFilters(); }
 
-    function getHoSoBadge(val) {
-        if (!val) return "-"; const v = val.toLowerCase();
-        if (v.includes("đủ") || v.includes("hợp lệ")) return `<span class="badge badge-success">${val}</span>`;
-        if (v.includes("thiếu") || v.includes("bổ sung")) return `<span class="badge badge-warning">${val}</span>`;
-        return `<span class="badge" style="background:#eee; color:#666;">${val}</span>`;
-    }
-
     function renderTable() {
         const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
-        if (filteredData.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:25px; color:#d32f2f;">❌ Không có hồ sơ nào thỏa mãn điều kiện lọc!</td></tr>`; return; }
+        if (filteredData.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:25px;">❌ Không có hồ sơ nào!</td></tr>`; return; }
 
         filteredData.forEach((row, index) => {
             const tr = document.createElement('tr');
             
-            // Xử lý UI Nút Thẩm Định theo trạng thái lưu trữ
+            // Xử lý STATE NÚT BẤM
             let btnText = "🔍 Thẩm định"; let btnClass = "btn-review";
             if (row._appState === "Đã duyệt") { btnText = "✅ Đã duyệt"; btnClass = "btn-review pass-state"; }
-            if (row._appState === "Đã yêu cầu bổ sung") { btnText = "⚠️ Đã yêu cầu BS"; btnClass = "btn-review warn-state"; }
+            if (row._appState === "Đã báo thiếu") { btnText = "⚠️ Đã yêu cầu BS"; btnClass = "btn-review warn-state"; }
+
+            let hsStatus = getVal(row, ["HỒ SƠ"]).toLowerCase();
+            let badge = hsStatus.includes("đủ") ? `<span class="badge badge-success">${getVal(row, ["HỒ SƠ"])}</span>` : `<span class="badge badge-warning">${getVal(row, ["HỒ SƠ"])}</span>`;
 
             tr.innerHTML = `
-                <td style="text-align: center;">${getVal(row, ["STT"]) || (index + 1)}</td>
-                <td style="text-align: center; white-space: nowrap;"><b>${formatOnlyDate(getVal(row, ["TIME"]))}</b></td>
-                <td style="white-space: nowrap;"><b>${getVal(row, ["SỐ CCCD"])}</b></td>
+                <td style="text-align: center;">${index + 1}</td>
+                <td style="text-align: center;"><b>${getVal(row, ["TIME"]).split(' ')[0]}</b></td>
+                <td><b>${getVal(row, ["CCCD", "SỐ CCCD"])}</b></td>
                 <td><b>${getVal(row, ["TÊN SINH VIÊN"])}</b></td>
-                <td>${getVal(row, ["NGÀNH"])}</td>
+                <td>${getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])}</td>
                 <td>${getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO"])}</td>
-                <td style="text-align: center;">${getHoSoBadge(getVal(row, ["HỒ SƠ"]))}</td>
+                <td style="text-align: center;">${badge}</td>
                 <td style="text-align: center;"><button class="${btnClass}" onclick="openWorkspace(${index})">${btnText}</button></td>
             `;
             tbody.appendChild(tr);
@@ -334,33 +278,38 @@
     }
 
     // =========================================================================
-    // 3. WORKSPACE: LOGIC TÍNH TOÁN VÀ HIỂN THỊ
+    // 3. WORKSPACE LOGIC
     // =========================================================================
     function openWorkspace(index) {
         currentCandidateIndex = index;
         const row = filteredData[index];
-        document.getElementById('ws-other-major').value = ""; // Reset dropdown khảo sát
+        document.getElementById('ws-other-major').value = ""; 
         
-        document.getElementById('ws-fullname').innerText = getVal(row, ["TÊN SINH VIÊN"]);
-        document.getElementById('ws-cccd').innerText = getVal(row, ["SỐ CCCD"]);
+        const fullname = getVal(row, ["TÊN SINH VIÊN"]);
+        document.getElementById('ws-fullname-title').innerText = fullname;
+        document.getElementById('ws-fullname').innerText = fullname;
+        
+        // MÃ SINH VIÊN LOGIC MỚI (Bỏ PadStart)
+        const namTuyen = getVal(row, ["NĂM XÉT TUYỂN", "Năm xét tuyển"]) || new Date().getFullYear();
+        const heDaoTao = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
+        const hinhThuc = getVal(row, ["HÌNH THỨC ĐÀO TẠO", "Hình thức đào tạo"]);
+        const cccd = getVal(row, ["CCCD", "SỐ CCCD"]) || "";
+
+        const maNam = String(namTuyen).slice(-2); 
+        const maHe = MAP_HE_DAO_TAO[heDaoTao] || "00"; 
+        const maHinhThuc = MAP_HINH_THUC[hinhThuc] || "0"; 
+        const maCCCD = cccd.slice(-6); // Lấy y nguyên 6 số cuối (nhân viên bắt buộc nhập đúng)
+        
+        document.getElementById('ws-cccd').innerText = cccd;
+        document.getElementById('ws-masv').innerText = `${maNam}${maHe}${maHinhThuc}${maCCCD}`;
         document.getElementById('ws-kvdt').innerText = `${getVal(row, ["KHU VỰC ƯU TIÊN"])} / ${getVal(row, ["ĐỐI TƯỢNG ƯU TIÊN"])}`;
 
-        // Tự động sinh Mã SV
-        const maNam = String(getVal(row, ["NĂM XÉT TUYỂN"]) || new Date().getFullYear()).slice(-2); 
-        const maHe = MAP_HE_DAO_TAO[getVal(row, ["HỆ ĐÀO TẠO"])] || "00"; 
-        const maHinhThuc = MAP_HINH_THUC[getVal(row, ["HÌNH THỨC ĐÀO TẠO"])] || "0"; 
-        const cccd = getVal(row, ["SỐ CCCD"]) || "";
-        const maCCCD = cccd.length >= 6 ? cccd.slice(-6) : cccd.padStart(6, '0');
-        document.getElementById('ws-masv').innerText = `${maNam}${maHe}${maHinhThuc}${maCCCD}`;
-
-        // Link Folder
+        // LINK HỒ SƠ
         let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '').trim();
         if (cleanLink && !cleanLink.startsWith("http")) cleanLink = "https://" + cleanLink;
-        document.getElementById('ws-link-box').innerHTML = cleanLink ? `<a href="${cleanLink}" target="_blank" class="btn-link" style="font-size:13px;">🔗 Mở Thư Mục Hồ Sơ Gốc</a>` : "<i style='color:#999'>Không có link</i>";
+        document.getElementById('ws-link').innerHTML = cleanLink ? `<a href="${cleanLink}" target="_blank" class="btn-link">🔗 Mở Google Drive ↗</a>` : "<i>Không có</i>";
 
-        // Khởi chạy hàm tính điểm & hồ sơ cho Ngành gốc
-        calculateAndRenderScores(row, getVal(row, ["NGÀNH"]));
-        
+        calculateAndRenderScores(row, getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]));
         updateModalActionButtons();
         document.getElementById('workspaceModal').style.display = 'flex';
     }
@@ -368,10 +317,10 @@
     function calculateAndRenderScores(row, targetNganh) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO"]);
         document.getElementById('ws-nganh').innerText = targetNganh;
-        document.getElementById('ws-nganh').style.color = (targetNganh !== getVal(row, ["NGÀNH"])) ? "#e65100" : "#111";
+        document.getElementById('ws-nganh').style.color = (targetNganh !== getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])) ? "#e65100" : "#111";
 
-        // TÍNH ĐIỂM SỐ
         let summaryHTML = ""; let comboHTML = "";
+        
         if (dtDauVao === "Tốt nghiệp THPT") {
             const diemCong = parseFloat(getVal(row, ["ĐIỂM CỘNG"]).replace(',','.')) || 0;
             const kvVal = getVal(row, ["KHU VỰC ƯU TIÊN"]); const dtVal = getVal(row, ["ĐỐI TƯỢNG ƯU TIÊN"]);
@@ -393,23 +342,22 @@
             if (maxScore > 0) {
                 finalUTien = maxScore >= 22.5 ? ((30 - maxScore) / 7.5) * uTienBanDau : uTienBanDau;
                 finalTotalScore = (maxScore + finalUTien + diemCong).toFixed(2);
-                let status = finalTotalScore >= 15.0 ? "<span style='color:#2e7d32'>ĐẠT (>= 15đ)</span>" : "<span style='color:#c62828'>TRƯỢT (< 15đ)</span>";
+                let status = finalTotalScore >= 15.0 ? "<span style='color:#2e7d32;font-weight:bold'>ĐẠT</span>" : "<span style='color:#c62828;font-weight:bold'>TRƯỢT</span>";
                 
                 summaryHTML = `
-                    <div class="info-card"><span class="info-label">Điểm Ưu Tiên / Điểm Cộng</span><span class="info-val">${finalUTien.toFixed(2)}đ / ${diemCong}đ</span></div>
-                    <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">ĐIỂM XÉT TUYỂN TỔNG</span><span class="info-val" style="font-size:20px; color:#2e7d32;">${finalTotalScore}</span></div>
-                    <div class="info-card"><span class="info-label">Đạt Chuẩn</span><span class="info-val">${status}</span></div>
+                    <div class="info-card"><span class="info-label">Điểm Ưu Tiên / Cộng</span><span class="info-val">${finalUTien.toFixed(2)}đ / ${diemCong}đ</span></div>
+                    <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">ĐIỂM TRÚNG TUYỂN (TỔNG)</span><span class="info-val" style="font-size:22px; color:#2e7d32;">${finalTotalScore}</span></div>
+                    <div class="info-card"><span class="info-label">Đạt Chuẩn (15đ)</span><span class="info-val">${status}</span></div>
                 `;
             } else { summaryHTML = "<div class="info-card" style="grid-column: span 3;"><i>Chưa đủ dữ liệu điểm để xét tổ hợp môn.</i></div>"; }
 
-            // Render bảng Tổ hợp
             if (comboResults.length > 0) {
                 comboHTML = `<table class="combo-table"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
                 comboResults.forEach(c => {
                     let isBest = (c.combo === bestCombo);
                     comboHTML += `<tr class="${isBest ? 'best-combo' : ''}">
                         <td>${c.combo} ${isBest ? '⭐' : ''}</td><td>${c.s1}</td><td>${c.s2}</td><td>${c.s3}</td>
-                        <td style="${isBest ? 'color:#d84315; font-size:15px;' : ''}">${c.total.toFixed(2)}</td></tr>`;
+                        <td style="${isBest ? 'color:#d84315; font-size:16px;' : ''}">${c.total.toFixed(2)}</td></tr>`;
                 });
                 comboHTML += `</tbody></table>`;
             }
@@ -419,26 +367,24 @@
             summaryHTML = `
                 <div class="info-card"><span class="info-label">ĐTB Hệ 4</span><span class="info-val">${h4 || '-'}</span></div>
                 <div class="info-card"><span class="info-label">ĐTB Hệ 10</span><span class="info-val">${h10 || '-'}</span></div>
-                <div class="info-card"><span class="info-label">Đạt Chuẩn</span><span class="info-val"><span style="color:#2e7d32">Hợp lệ</span></span></div>
+                <div class="info-card"><span class="info-label">Đạt Chuẩn</span><span class="info-val"><span style="color:#2e7d32;font-weight:bold">ĐẠT (Hợp lệ)</span></span></div>
             `;
         }
         document.getElementById('ws-score-summary').innerHTML = summaryHTML;
         document.getElementById('ws-combo-list-container').innerHTML = comboHTML;
 
-        // QUÉT HỒ SƠ THIẾU
+        // TRẠNG THÁI HỒ SƠ
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = [];
         dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
         
-        let hsStatus = getVal(row, ["HỒ SƠ"]);
-        let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">Thiếu hồ sơ tiên quyết: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32; font-weight:bold;">Đủ hồ sơ hợp lệ</span>`;
+        let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ tiên quyết</span>`;
         document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
     }
 
     function handleCrossCheckChange() {
         const val = document.getElementById('ws-other-major').value;
         const row = filteredData[currentCandidateIndex];
-        const targetNganh = val === "" ? getVal(row, ["NGÀNH"]) : val;
-        
+        const targetNganh = val === "" ? getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]) : val;
         calculateAndRenderScores(row, targetNganh);
         updateModalActionButtons();
     }
@@ -457,30 +403,34 @@
             return;
         }
 
-        btnA.disabled = false; btnM.disabled = false; 
-        
+        // Khôi phục nút
+        btnA.disabled = (row._appState === "Đã duyệt");
+        btnM.disabled = (row._appState === "Đã báo thiếu");
+        btnA.innerText = row._appState === "Đã duyệt" ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN";
+        btnM.innerText = row._appState === "Đã báo thiếu" ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ BÁO THIẾU HỒ SƠ";
+
         if (row._saved) {
             btnS.disabled = true;
             btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA";
         } else {
             btnS.disabled = false;
-            btnS.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET 'KETQUA'";
+            btnS.innerText = "💾 CHỐT KẾT QUẢ VÀO KETQUA";
         }
     }
 
     function closeWorkspace() { document.getElementById('workspaceModal').style.display = 'none'; }
 
     // =========================================================================
-    // 4. API ACTIONS LƯU TRẠNG THÁI NÚT BẤM
+    // 4. THỰC THI API
     // =========================================================================
     async function triggerApprove() {
         let row = filteredData[currentCandidateIndex];
-        if(!confirm(`Xác nhận Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${getVal(row, ["TÊN SINH VIÊN"])}?`)) return;
+        if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${getVal(row, ["TÊN SINH VIÊN"])}?`)) return;
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
         const payload = [{
-            soCCCD: getVal(row, ["SỐ CCCD"]), hoTen: getVal(row, ["TÊN SINH VIÊN"]),
-            ngaySinh: getVal(row, ["NGÀY SINH"]), nganh: getVal(row, ["NGÀNH"]),
+            soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), hoTen: getVal(row, ["TÊN SINH VIÊN"]),
+            ngaySinh: getVal(row, ["NGÀY SINH"]), nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
             ngayCapNhat: new Date().toLocaleDateString('vi-VN')
         }];
 
@@ -489,21 +439,19 @@
             const result = await resp.json();
             if(result.status === "success") { 
                 alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}`); 
-                row._appState = "Đã duyệt"; // Lưu trạng thái
-                renderTable();
-            } else { alert("Lỗi từ hệ thống: " + result.message); }
-        } catch (e) { alert("Lỗi kết nối mạng: " + e); }
-        btn.innerText = "✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN"; btn.disabled = false;
+                row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons();
+            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN"; }
+        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN"; }
     }
 
     async function triggerMissing() {
         let row = filteredData[currentCandidateIndex];
-        const hosoThieu = prompt(`Nhập tên hồ sơ còn thiếu để báo cho ${getVal(row, ["TÊN SINH VIÊN"])}:`, "Bản sao Học bạ THPT");
+        const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${getVal(row, ["TÊN SINH VIÊN"])}:`, "Bản sao Học bạ THPT");
         if(!hosoThieu) return;
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
         const payload = [{
-            soCCCD: getVal(row, ["SỐ CCCD"]), hoTen: getVal(row, ["TÊN SINH VIÊN"]),
+            soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), hoTen: getVal(row, ["TÊN SINH VIÊN"]),
             hosoThieu: "Thiếu: " + hosoThieu, ngayCapNhat: new Date().toLocaleDateString('vi-VN')
         }];
 
@@ -511,17 +459,15 @@
             const resp = await fetch(API_BAO_THIEU, { method: "POST", body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã gửi biên nhận Báo thiếu!\nLink PDF: ${result.pdfUrl}`); 
-                row._appState = "Đã yêu cầu bổ sung"; // Lưu trạng thái
-                renderTable();
-            } else { alert("Lỗi từ hệ thống: " + result.message); }
-        } catch (e) { alert("Lỗi kết nối mạng: " + e); }
-        btn.innerText = "⚠️ BÁO THIẾU HỒ SƠ (YÊU CẦU BS)"; btn.disabled = false;
+                alert(`✅ Đã gửi báo thiếu!\nLink PDF: ${result.pdfUrl}`); 
+                row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons();
+            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "⚠️ BÁO THIẾU HỒ SƠ"; }
+        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "⚠️ BÁO THIẾU HỒ SƠ"; }
     }
 
     async function triggerSaveToSheet() {
         let row = filteredData[currentCandidateIndex];
-        if(!confirm(`Lưu dữ liệu thí sinh ${getVal(row, ["TÊN SINH VIÊN"])} vào CSDL`)) return;
+        if(!confirm(`Lưu ${getVal(row, ["TÊN SINH VIÊN"])} vào Sheet KETQUA?`)) return;
         let btn = document.getElementById('btnSaveToResult'); btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
         const payloadObject = { ...row };
@@ -532,14 +478,12 @@
             const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadObject]) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã lưu hồ sơ`); 
-                row._saved = true; // Lưu trạng thái không cho lưu lại
-                updateModalActionButtons();
+                alert(`✅ Đã chốt hồ sơ thành công!`); 
+                row._saved = true; updateModalActionButtons();
             } 
-            else { alert("Lỗi từ hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU HỒ SƠ";}
-        } catch (e) { alert("Lỗi kết nối mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU HỒ SƠ";}
+            else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 CHỐT KẾT QUẢ VÀO KETQUA";}
+        } catch (e) { alert("Lỗi mạng: " + e); btn.disabled = false; btn.innerText = "💾 CHỐT KẾT QUẢ VÀO KETQUA";}
     }
-
     function exportExcel() {
         if (filteredData.length === 0) { alert("⚠️ Không có dữ liệu để xuất Excel!"); return; }
         const exportData = filteredData.map((row, index) => {
