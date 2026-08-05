@@ -50,7 +50,6 @@
         .ws-header { background: #004d40; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
         .ws-body { padding: 12px 15px; overflow-y: auto; background: #fafafa; }
         
-        /* Nav Buttons */
         .nav-btn { background: #00695c; color: white; border: 1px solid #004d40; border-radius: 3px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; }
         .nav-btn:hover:not(:disabled) { background: #00897b; }
         .nav-btn:disabled { background: #004d40; color: #888; cursor: not-allowed; border-color: #00332a; }
@@ -64,14 +63,12 @@
         .info-val { font-size: 12px; color: #111; font-weight: 600; }
         .info-val.highlight { color: #d84315; font-size: 14px; }
         
-        /* CARD XEM LINK RIÊNG */
         .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
         .link-card:hover { background: #b2dfdb; }
 
-/* ÉP BẢNG TỔ HỢP ĐIỂM THU GỌN 100% SÁT NỘI DUNG */
-        #ws-combo-list-container { display: flex; justify-content: center; margin: 8px 0; width: 100%; }
-        .combo-table { width: auto !important; border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-        .combo-table th, .combo-table td { border: 1px solid #e0e0e0; padding: 4px 15px; text-align: center; font-size: 12px; white-space: nowrap; }
+        /* BẢNG TỔ HỢP ĐIỂM SÁT RẠT */
+        .combo-table { width: max-content !important; min-width: 50%; margin: 0 auto; border-collapse: collapse; background: #fff; }
+        .combo-table th, .combo-table td { border: 1px solid #e0e0e0; padding: 3px 10px; text-align: center; font-size: 11px; white-space: nowrap; }
         .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
         .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffb300; font-weight: bold; }
 
@@ -90,7 +87,6 @@
             .action-buttons { flex-direction: column; }
             .btn-action { width: 100%; min-width: 100%; padding: 12px; font-size: 13px; }
             .filter-group { min-width: 48%; }
-            .combo-table { width: 100%; } /* Trả lại full màn hình trên đt */
             .copyright { right: 50%; transform: translateX(50%); bottom: 5px; font-size: 10px; width: max-content; }
         }
         @media (max-width: 480px) {
@@ -356,7 +352,6 @@
         if (filteredData.length === 0) { alert("⚠️ Không có dữ liệu để xuất Excel!"); return; }
         const exportData = filteredData.map((row, index) => {
             let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
-            
             const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
             const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; 
             let missing = [];
@@ -453,14 +448,15 @@
             }
 
             if (comboResults.length > 0) {
-                comboHTML = `<table class="combo-table"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
+                // ĐÓNG GÓI BẢNG TRONG MỘT THẺ DIV ĐỂ CHỐNG GIÃN NGANG
+                comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><table class="combo-table"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
                 comboResults.forEach(c => {
                     let isBest = (c.combo === bestCombo);
                     comboHTML += `<tr class="${isBest ? 'best-combo' : ''}">
                         <td>${c.combo} ${isBest ? '⭐' : ''}</td><td>${c.s1}</td><td>${c.s2}</td><td>${c.s3}</td>
                         <td style="${isBest ? 'color:#d84315; font-weight:bold;' : ''}">${c.total.toFixed(2)}</td></tr>`;
                 });
-                comboHTML += `</tbody></table>`;
+                comboHTML += `</tbody></table></div>`;
             }
 
         } else {
@@ -532,17 +528,14 @@
         }];
 
         try {
-            const resp = await fetch(API_TRUNG_TUYEN, { 
-                method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload) 
-            });
+            const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}`); 
+                // HIỂN THỊ LOG TỪ GOOGLE SHEET VÀO KHUNG THÔNG BÁO
+                alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[HỆ THỐNG BÁO CÁO]:\n${result.debug || "Không có báo cáo"}`); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons();
-            } else { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
-        } catch (e) { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
+            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
+        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
     }
 
     async function triggerMissing() {
@@ -560,17 +553,14 @@
         }];
 
         try {
-            const resp = await fetch(API_BAO_THIEU, { 
-                method: "POST", 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload) 
-            });
+            const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã gửi báo thiếu!\nLink PDF: ${result.pdfUrl}`); 
+                // HIỂN THỊ LOG TỪ GOOGLE SHEET VÀO KHUNG THÔNG BÁO
+                alert(`✅ Đã gửi báo thiếu!\nLink PDF: ${result.pdfUrl}\n\n[HỆ THỐNG BÁO CÁO]:\n${result.debug || "Không có báo cáo"}`); 
                 row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons();
-            } else { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
-        } catch (e) { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`);}
+            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
+        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
     }
 
     async function triggerSaveToSheet() {
