@@ -365,9 +365,10 @@
         filteredData.forEach((row, index) => {
             const tr = document.createElement('tr');
             
-            let btnText = "🔍 Thẩm định"; let btnClass = "btn-review";
-            if (row._appState === "Đã duyệt") { btnText = "✅ Đã duyệt"; btnClass = "btn-review pass-state"; }
-            if (row._appState === "Đã báo thiếu") { btnText = "⚠️ Đã yêu cầu BS"; btnClass = "btn-review warn-state"; }
+let btnText = "🔍 Thẩm định"; let btnClass = "btn-review";
+if (row._appState === "Đã duyệt") { btnText = "✅ Đã duyệt"; btnClass = "btn-review pass-state"; }
+else if (row._appState === "Đã báo thiếu") { btnText = "⚠️ Đã yêu cầu BS"; btnClass = "btn-review warn-state"; }
+else if (row._appState === "Mới bổ sung") { btnText = "🔄 Mới bổ sung"; btnClass = "btn-review"; }
 
             const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
             const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = [];
