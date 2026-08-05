@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Application Review Workspace</title>
     
-    <!-- GỌI FILE CSS LÀM ĐẸP VÀO ĐÂY -->
     <link rel="stylesheet" href="https://thinhnt291.github.io/xettuyen/style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -48,7 +47,7 @@
                     <th style="width: 40px; text-align: center;">STT</th>
                     <th style="width: 80px; text-align: center;">NGÀY CN</th>
                     <th style="width: 90px;">MÃ SV</th>
-                    <th style="width: 100px;">CCCD</th>
+                    <th style="width: 100px;">CĂN CƯỚC</th>
                     <th style="width: 160px;">HỌ VÀ TÊN</th>
                     <th>NGÀNH ĐÀO TẠO</th>
                     <th>ĐỐI TƯỢNG</th>
@@ -132,7 +131,16 @@
 
     window.onload = () => {
         document.getElementById('filter-from').value = "2026-01-01";
-        document.getElementById('filter-to').value = new Date().toISOString().slice(0, 10);
+        
+        // ----------------------------------------------------
+        // ĐÃ FIX LỖI MÚI GIỜ: Ép lấy ngày hiện tại theo giờ Việt Nam
+        // ----------------------------------------------------
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('filter-to').value = `${yyyy}-${mm}-${dd}`;
+        
         fetchCSVData();
         const crossCheckSelect = document.getElementById('ws-other-major');
         Object.keys(DICT_NGANH).forEach(nganh => crossCheckSelect.appendChild(new Option(nganh, nganh)));
@@ -160,6 +168,9 @@
         });
     }
 
+    // ----------------------------------------------------
+    // HÀM GETVAL SIÊU CẤP: DỌN SẠCH ENTER (\n) CỦA GOOGLE SHEET
+    // ----------------------------------------------------
     function getVal(row, keys) {
         for (let k of keys) {
             let searchKey = k.trim().toUpperCase().replace(/\s+/g, ' ');
@@ -171,6 +182,9 @@
         return "";
     }
 
+    // ----------------------------------------------------
+    // HÀM QUÉT HỒ SƠ: CHỐNG TRÙNG LẶP CHỮ "CCCD" 
+    // ----------------------------------------------------
     function getMissingDocs(row) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
@@ -179,6 +193,7 @@
         
         [...dsChung, ...dsTienQuyet].forEach(doc => {
             let keysToCheck = [doc.name];
+            // Ép nó đi tìm đúng cái chữ "BẢN SAO CCCD" thay vì lạc sang cột CĂN CƯỚC
             if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
             if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
             if(doc.id === 'doc_syll') keysToCheck = ["SƠ YẾU LÝ LỊCH", "SYLL"];
@@ -196,7 +211,6 @@
         const namTuyen = getVal(row, ["NĂM XÉT TUYỂN", "Năm xét tuyển"]) || new Date().getFullYear();
         const heDaoTao = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
         const hinhThuc = getVal(row, ["HÌNH THỨC ĐÀO TẠO", "Hình thức đào tạo"]);
-        // ĐÃ BỔ SUNG CĂN CƯỚC
         const cccd = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
         const maNam = String(namTuyen).slice(-2); 
         const maHe = MAP_HE_DAO_TAO[heDaoTao] || "00"; 
@@ -323,7 +337,6 @@
                 ? `<span class="badge badge-warning" style="white-space:normal;text-align:left;">Thiếu: ${missing.join(', ')}</span>` 
                 : `<span class="badge badge-success">Đủ hồ sơ</span>`;
 
-            // ĐÃ BỔ SUNG CĂN CƯỚC
             let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
             let scoreText = getBestScoreText(row);
 
@@ -348,7 +361,6 @@
         
         const exportData = filteredData.map((row, index) => {
             let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
-            // ĐÃ BỔ SUNG CĂN CƯỚC
             let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
             
             let missing = getMissingDocs(row);
@@ -407,7 +419,6 @@
         document.getElementById('ws-fullname-title').innerText = fullname;
         document.getElementById('ws-fullname').innerText = fullname;
         
-        // ĐÃ BỔ SUNG CĂN CƯỚC
         document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
         document.getElementById('ws-masv').innerText = generateMaSV(row);
         
@@ -534,11 +545,9 @@
         if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${hoTen}?`)) return;
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
-        // ĐÃ BỔ SUNG CĂN CƯỚC
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
             hoTen: hoTen, 
-            ngaySinh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), // CÓ THỂ LÀ BUG Ở MÃ CŨ, SẼ SỬA LUÔN NẾU CẦN. Nhưng thôi để y hệt cấu trúc API.
             ngaySinh: getVal(row, ["NGÀY SINH"]), 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
             ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
@@ -561,7 +570,6 @@
         if(!hosoThieu) return;
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
-        // ĐÃ BỔ SUNG CĂN CƯỚC
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
             hoTen: hoTen, 
