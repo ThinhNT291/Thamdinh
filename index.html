@@ -514,14 +514,15 @@ comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><tab
 
     function closeWorkspace() { document.getElementById('workspaceModal').style.display = 'none'; }
 
-    async function triggerApprove() {
+async function triggerApprove() {
         let row = filteredData[currentCandidateIndex];
-        if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])}?`)) return;
+        let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
+        if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${hoTen}?`)) return;
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
         const payload = [{ 
             soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
-            hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]), 
+            hoTen: hoTen, 
             ngaySinh: getVal(row, ["NGÀY SINH"]), 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
             ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
@@ -531,8 +532,7 @@ comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><tab
             const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                // HIỂN THỊ LOG TỪ GOOGLE SHEET VÀO KHUNG THÔNG BÁO
-                alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[HỆ THỐNG BÁO CÁO]:\n${result.debug || "Không có báo cáo"}`); 
+                alert(`✅ Đã duyệt trúng tuyển cho hồ sơ ${hoTen}.`); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons();
             } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
         } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
@@ -540,13 +540,14 @@ comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><tab
 
     async function triggerMissing() {
         let row = filteredData[currentCandidateIndex];
-        const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])}:`, "Bản sao Học bạ THPT");
+        let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
+        const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${hoTen}:`, "Bản sao Học bạ THPT");
         if(!hosoThieu) return;
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
         const payload = [{ 
             soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
-            hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]), 
+            hoTen: hoTen, 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
             hosoThieu: "Thiếu: " + hosoThieu, 
             ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
@@ -556,13 +557,12 @@ comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><tab
             const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                // HIỂN THỊ LOG TỪ GOOGLE SHEET VÀO KHUNG THÔNG BÁO
-                alert(`✅ Đã gửi báo thiếu!\nLink PDF: ${result.pdfUrl}\n\n[HỆ THỐNG BÁO CÁO]:\n${result.debug || "Không có báo cáo"}`); 
+                alert(`✅ Đã gửi yêu cầu bổ sung hồ sơ ${hoTen} thành công.`); 
                 row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons();
             } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
         } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
     }
-
+    
     async function triggerSaveToSheet() {
         let row = filteredData[currentCandidateIndex];
         if(!confirm(`Lưu ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])} vào CSDL?`)) return;
