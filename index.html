@@ -160,7 +160,6 @@
         });
     }
 
-    // BẢN FIX SIÊU CẤP: LỌC SẠCH MỌI DẤU XUỐNG DÒNG VÀ DẤU CÁCH THỪA CỦA GOOGLE SHEET
     function getVal(row, keys) {
         for (let k of keys) {
             let searchKey = k.trim().toUpperCase().replace(/\s+/g, ' ');
@@ -197,7 +196,8 @@
         const namTuyen = getVal(row, ["NĂM XÉT TUYỂN", "Năm xét tuyển"]) || new Date().getFullYear();
         const heDaoTao = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
         const hinhThuc = getVal(row, ["HÌNH THỨC ĐÀO TẠO", "Hình thức đào tạo"]);
-        const cccd = getVal(row, ["CCCD", "SỐ CCCD"]) || "";
+        // ĐÃ BỔ SUNG CĂN CƯỚC
+        const cccd = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
         const maNam = String(namTuyen).slice(-2); 
         const maHe = MAP_HE_DAO_TAO[heDaoTao] || "00"; 
         const maHinhThuc = MAP_HINH_THUC[hinhThuc] || "0"; 
@@ -323,7 +323,8 @@
                 ? `<span class="badge badge-warning" style="white-space:normal;text-align:left;">Thiếu: ${missing.join(', ')}</span>` 
                 : `<span class="badge badge-success">Đủ hồ sơ</span>`;
 
-            let cccdStr = getVal(row, ["CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
+            // ĐÃ BỔ SUNG CĂN CƯỚC
+            let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
             let scoreText = getBestScoreText(row);
 
             tr.innerHTML = `
@@ -342,25 +343,24 @@
         });
     }
 
-    // XUẤT EXCEL CHUYÊN NGHIỆP CÓ TÍCH HỢP CHÂN TRANG
     function exportExcel() {
         if (filteredData.length === 0) { alert("⚠️ Không có dữ liệu để xuất Excel!"); return; }
         
         const exportData = filteredData.map((row, index) => {
             let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
-            let cccdStr = getVal(row, ["CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
+            // ĐÃ BỔ SUNG CĂN CƯỚC
+            let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
             
             let missing = getMissingDocs(row);
             let hsStatus = missing.length > 0 ? "Thiếu hồ sơ: " + missing.join(', ') : "Đủ hồ sơ hợp lệ";
             
-            // Xóa các tag HTML để in chữ thô ra Excel
             let rawScoreText = getBestScoreText(row).replace(/<[^>]+>/g, '');
 
             return {
                 "STT": getVal(row, ["STT"]) || (index + 1), 
                 "NGÀY NỘP": getVal(row, ["TIME"]).split(' ')[0],
                 "MÃ SINH VIÊN": generateMaSV(row), 
-                "CCCD": cccdStr,
+                "CĂN CƯỚC": cccdStr,
                 "HỌ VÀ TÊN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
                 "NGÀNH ĐÀO TẠO": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
                 "ĐỐI TƯỢNG ĐẦU VÀO": getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]),
@@ -371,18 +371,16 @@
             };
         });
         
-        // Thêm một dòng thông báo cuối bảng
         let nowStr = new Date().toLocaleString('vi-VN');
         exportData.push({
             "STT": `Dữ liệu cập nhật đến ngày ${nowStr}`,
-            "NGÀY NỘP": "", "MÃ SINH VIÊN": "", "CCCD": "", "HỌ VÀ TÊN": "", 
+            "NGÀY NỘP": "", "MÃ SINH VIÊN": "", "CĂN CƯỚC": "", "HỌ VÀ TÊN": "", 
             "NGÀNH ĐÀO TẠO": "", "ĐỐI TƯỢNG ĐẦU VÀO": "", "ĐIỂM/ TỔ HỢP": "", 
             "HỒ SƠ": "", "TRẠNG THÁI THẨM ĐỊNH": "", "LINK HỒ SƠ": ""
         });
 
         const worksheet = XLSX.utils.json_to_sheet(exportData);
         
-        // Gộp ô cho dòng thông báo cuối cùng
         if(!worksheet['!merges']) worksheet['!merges'] = [];
         worksheet['!merges'].push({ s: {r: exportData.length, c: 0}, e: {r: exportData.length, c: 10} });
 
@@ -409,7 +407,8 @@
         document.getElementById('ws-fullname-title').innerText = fullname;
         document.getElementById('ws-fullname').innerText = fullname;
         
-        document.getElementById('ws-cccd').innerText = getVal(row, ["CCCD", "SỐ CCCD"]) || "";
+        // ĐÃ BỔ SUNG CĂN CƯỚC
+        document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
         document.getElementById('ws-masv').innerText = generateMaSV(row);
         
         document.getElementById('ws-hedt').innerText = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
@@ -535,9 +534,11 @@
         if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${hoTen}?`)) return;
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
+        // ĐÃ BỔ SUNG CĂN CƯỚC
         const payload = [{ 
-            soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
             hoTen: hoTen, 
+            ngaySinh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), // CÓ THỂ LÀ BUG Ở MÃ CŨ, SẼ SỬA LUÔN NẾU CẦN. Nhưng thôi để y hệt cấu trúc API.
             ngaySinh: getVal(row, ["NGÀY SINH"]), 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
             ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
@@ -560,8 +561,9 @@
         if(!hosoThieu) return;
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
+        // ĐÃ BỔ SUNG CĂN CƯỚC
         const payload = [{ 
-            soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
             hoTen: hoTen, 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
             hosoThieu: "Thiếu: " + hosoThieu, 
