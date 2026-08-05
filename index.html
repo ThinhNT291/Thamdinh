@@ -273,11 +273,45 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2jv-0IQpc1VAG
         document.getElementById('ws-nganh').innerText = getVal(row, ["NGÀNH"]);
         document.getElementById('ws-kvdt').innerText = `${getVal(row, ["KHU VỰC ƯU TIÊN"])} / ${getVal(row, ["ĐỐI TƯỢNG ƯU TIÊN"])}`;
 
-        // Tự động sinh MÃ SINH VIÊN (Ví dụ: Năm + Khóa + CCCD 4 số cuối)
+// ================================================================
+        // TỰ ĐỘNG SINH MÃ SINH VIÊN CHUẨN HÓA (Định dạng: YY-HH-F-CCCCCC)
+        // ================================================================
         const namTuyen = getVal(row, ["NĂM XÉT TUYỂN"]) || new Date().getFullYear();
-        const khoa = getVal(row, ["KHÓA"]) || "01";
-        const cccdTail = getVal(row, ["SỐ CCCD"]).slice(-4);
-        document.getElementById('ws-masv').innerText = `${namTuyen}K${khoa}-${cccdTail}`;
+        const heDaoTao = getVal(row, ["HỆ ĐÀO TẠO"]);
+        const hinhThuc = getVal(row, ["HÌNH THỨC ĐÀO TẠO"]);
+        const cccd = getVal(row, ["SỐ CCCD"]) || "";
+
+        // 1. Khởi tạo Hash Map cho Hệ Đào Tạo (2 số)
+        const MAP_HE_DAO_TAO = {
+            "Cao đẳng": "01",
+            "Đại học chính quy": "02",
+            "Liên thông ĐH - ĐH (Văn bằng 2)": "03",
+            "Thường xuyên: Phương thức ĐTTX": "04", // Khớp với form nhập liệu
+            "Liên thông từ CĐ lên ĐH": "05",
+            "Thường xuyên: Phương thức VLVH": "06", // Khớp với form nhập liệu
+            "Thạc sĩ": "07",
+            "Khóa ngắn hạn cấp chứng chỉ": "08"
+        };
+
+        // 2. Khởi tạo Hash Map cho Hình Thức Đào Tạo (1 số)
+        const MAP_HINH_THUC = {
+            "Chính quy đại trà": "1",
+            "Liên thông ĐH - ĐH chính quy (VB 2)": "2",
+            "Thường xuyên: Phương thức ĐTTX": "3",
+            "Thường xuyên: Phương thức VLVH": "4"
+        };
+
+        // 3. Bóc tách và định dạng dữ liệu an toàn (Fail-safe)
+        const maNam = String(namTuyen).slice(-2); // Lấy 2 số cuối của năm
+        const maHe = MAP_HE_DAO_TAO[heDaoTao] || "00"; // Fallback '00' nếu không khớp dữ liệu
+        const maHinhThuc = MAP_HINH_THUC[hinhThuc] || "0"; // Fallback '0' nếu không khớp
+        
+        // Trích xuất 6 số cuối CCCD. Nếu CCCD ngắn hơn 6 số, tự động bù số 0 lên trước cho đủ chuẩn
+        const maCCCD = cccd.length >= 6 ? cccd.slice(-6) : cccd.padStart(6, '0');
+
+        // 4. Lắp ráp và hiển thị lên giao diện Workspace
+        const maSinhVien = `${maNam}${maHe}${maHinhThuc}${maCCCD}`;
+        document.getElementById('ws-masv').innerText = maSinhVien;
 
         // -------------------------------------------------------------
         // TRANSLATE TỪ APP.JS SANG WEB2: TÍNH LẠI ĐIỂM NGAY TRÊN TRÌNH DUYỆT
@@ -341,3 +375,33 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2jv-0IQpc1VAG
         const link = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]);
         const embedUrl = getDriveEmbedUrl(link);
         document.getElementById('ws-iframe')
+
+        async function triggerSaveToSheet() {
+    if(!confirm(`Chốt dữ liệu thí sinh ${getVal(currentCandidate, ["TÊN SINH VIÊN"])} vào Sheet KETQUA chính thức?`)) return;
+
+    let btn = document.getElementById('btnSaveToResult');
+    btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
+
+    // Lấy toàn bộ dữ liệu hiện tại, bọc thêm các thông tin vừa được Web2 sinh ra
+    const payloadObject = { ...currentCandidate };
+    payloadObject["MÃ SINH VIÊN"] = document.getElementById('ws-masv').innerText; // Lấy mã SV tự động
+    payloadObject["KẾT QUẢ ĐIỂM"] = "Trúng tuyển"; // Có thể lấy tự động từ giao diện
+    
+    try {
+        const resp = await fetch(API_LUU_KETQUA, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify([payloadObject]) // Bọc Object vào Array
+        });
+        const result = await resp.json();
+        if(result.status === "success") {
+            alert(`✅ Đã chốt hồ sơ thành công vào KETQUA!`);
+            closeWorkspace(); // Đóng modal sau khi lưu xong
+        } else {
+            alert("Lỗi từ hệ thống: " + result.message);
+        }
+    } catch (e) {
+        alert("Lỗi kết nối mạng: " + e);
+    }
+    btn.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET KETQUA"; btn.disabled = false;
+}
