@@ -99,7 +99,7 @@
 <div class="container">
     <h1>
         <span>📊 BAN THẨM ĐỊNH HỒ SƠ TUYỂN SINH</span>
-        <span style="font-size: 12px; font-weight: normal; color: #666;" id="last-updated">⏳ Đang lấy dữ liệu...</span>
+        <span style="font-size: 12px; font-weight: normal; color: #666;" id="last-updated">⏳ Đang tải dữ liệu...</span>
     </h1>
 
     <div class="kpi-grid">
@@ -109,7 +109,7 @@
             <span class="kpi-sub">Theo khu vực bộ lọc hiện tại</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-title">📑 Trạng thái hồ sơ (Đủ hồ sơ)</span>
+            <span class="kpi-title">📑 Số thí sinh đủ hồ sơ</span>
             <span class="kpi-value" style="color: #2980b9;" id="kpi-docs">0</span>
             <span class="kpi-sub" id="kpi-docs-rate">Chiếm 0%</span>
         </div>
@@ -153,7 +153,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="8" style="text-align:center; padding: 25px; font-weight:bold; color:#0288d1;">⏳ Đang kết nối tới Google Cloud...</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding: 25px; font-weight:bold; color:#0288d1;">⏳ Đang kết nối...</td></tr>
             </tbody>
         </table>
     </div>
@@ -521,7 +521,7 @@
 
     async function triggerSaveToSheet() {
         let row = filteredData[currentCandidateIndex];
-        if(!confirm(`Chốt dữ liệu thí sinh ${getVal(row, ["TÊN SINH VIÊN"])} vào Sheet KETQUA chính thức?`)) return;
+        if(!confirm(`Lưu dữ liệu thí sinh ${getVal(row, ["TÊN SINH VIÊN"])} vào CSDL`)) return;
         let btn = document.getElementById('btnSaveToResult'); btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
         const payloadObject = { ...row };
@@ -532,12 +532,12 @@
             const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadObject]) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã chốt hồ sơ thành công vào KETQUA!`); 
+                alert(`✅ Đã lưu hồ sơ`); 
                 row._saved = true; // Lưu trạng thái không cho lưu lại
                 updateModalActionButtons();
             } 
-            else { alert("Lỗi từ hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET 'KETQUA'";}
-        } catch (e) { alert("Lỗi kết nối mạng: " + e); btn.disabled = false; btn.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET 'KETQUA'";}
+            else { alert("Lỗi từ hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU HỒ SƠ";}
+        } catch (e) { alert("Lỗi kết nối mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU HỒ SƠ";}
     }
 
     function exportExcel() {
