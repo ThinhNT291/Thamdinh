@@ -449,7 +449,7 @@
 
             if (comboResults.length > 0) {
                 // ĐÓNG GÓI BẢNG TRONG MỘT THẺ DIV ĐỂ CHỐNG GIÃN NGANG
-                comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><table class="combo-table"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
+comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><table class="combo-table" style="width: max-content !important; min-width: unset; margin: 0 auto;"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
                 comboResults.forEach(c => {
                     let isBest = (c.combo === bestCombo);
                     comboHTML += `<tr class="${isBest ? 'best-combo' : ''}">
