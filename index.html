@@ -168,7 +168,7 @@
         return "";
     }
 
-    // BỘ MÁY QUÉT HỒ SƠ TỔNG LỰC (QUÉT CẢ HS CHUNG LẪN HS TIÊN QUYẾT)
+    // BẢN FIX MỚI: BỘ MÁY QUÉT HỒ SƠ CHỐNG TRÙNG LẶP CỘT "CCCD"
     function getMissingDocs(row) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
@@ -176,7 +176,14 @@
         let missing = [];
         
         [...dsChung, ...dsTienQuyet].forEach(doc => {
-            let val = getVal(row, [doc.name]).toUpperCase();
+            // Tạo một mảng các tên cột dự phòng để tránh quét nhầm cột Text (Đặc biệt là CCCD)
+            let keysToCheck = [doc.name];
+            if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
+            if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
+            if(doc.id === 'doc_syll') keysToCheck = ["SƠ YẾU LÝ LỊCH", "SYLL"];
+            if(doc.id === 'doc_khaisinh') keysToCheck = ["BẢN SAO GIẤY KHAI SINH", "KHAI SINH"];
+
+            let val = getVal(row, keysToCheck).toUpperCase();
             if (val !== "TRUE" && val !== "1" && val !== "V" && val !== "X" && val !== "CÓ") {
                 missing.push(doc.name);
             }
