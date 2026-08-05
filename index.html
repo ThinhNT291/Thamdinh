@@ -68,11 +68,12 @@
         .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
         .link-card:hover { background: #b2dfdb; }
 
-        /* THU GỌN BẢNG TỔ HỢP ĐIỂM THEO YÊU CẦU */
-        .combo-table { width: max-content; border-collapse: collapse; margin: 5px auto; background: #fff; }
-        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 2px 8px; text-align: center; font-size: 11px; line-height: 1.1; }
+/* ÉP BẢNG TỔ HỢP ĐIỂM THU GỌN 100% SÁT NỘI DUNG */
+        #ws-combo-list-container { display: flex; justify-content: center; margin: 8px 0; width: 100%; }
+        .combo-table { width: auto !important; border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+        .combo-table th, .combo-table td { border: 1px solid #e0e0e0; padding: 4px 15px; text-align: center; font-size: 12px; white-space: nowrap; }
         .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
-        .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffca28; font-weight: bold; }
+        .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffb300; font-weight: bold; }
 
         .cross-check-box { background: #fff3e0; border: 1px dashed #ffb74d; padding: 4px 8px; border-radius: 4px; margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .cross-check-box select { flex: 1; min-width: 200px; padding: 4px; border-radius: 3px; border: 1px solid #ffb74d; font-weight: bold; color: #e65100; font-size: 12px; outline:none; }
