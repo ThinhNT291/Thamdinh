@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Application Review Workspace</title>
     
+    <!-- GỌI FILE CSS LÀM ĐẸP VÀO ĐÂY -->
     <link rel="stylesheet" href="https://thinhnt291.github.io/xettuyen/style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -63,6 +64,7 @@
 
 <div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
 
+<!-- WORKSPACE MODAL -->
 <div id="workspaceModal" class="workspace-overlay">
     <div class="workspace-modal">
         <div class="ws-header">
@@ -130,7 +132,6 @@
 
     window.onload = () => {
         document.getElementById('filter-from').value = "2026-01-01";
-        
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -164,12 +165,17 @@
         });
     }
 
+    // ĐÃ FIX BỘ LỌC CẠO SẠCH DẤU NHÁY ĐƠN VÀ SPACE
     function getVal(row, keys) {
         for (let k of keys) {
             let searchKey = k.trim().toUpperCase().replace(/\s+/g, ' ');
             for (let rowKey in row) { 
                 let cleanRowKey = rowKey.trim().toUpperCase().replace(/\s+/g, ' ');
-                if (cleanRowKey === searchKey) return (row[rowKey] || "").trim(); 
+                if (cleanRowKey === searchKey) {
+                    let val = (row[rowKey] || "").trim();
+                    if(val.startsWith("'")) val = val.substring(1); // Cạo sạch nháy đơn
+                    return val;
+                }
             } 
         } 
         return "";
@@ -183,10 +189,7 @@
         
         [...dsChung, ...dsTienQuyet].forEach(doc => {
             let keysToCheck = [doc.name];
-            
-            // Đã Bổ sung chìa khóa BẢN SAO ID vào đây
             if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO ID", "BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
-            
             if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
             if(doc.id === 'doc_syll') keysToCheck = ["SƠ YẾU LÝ LỊCH", "SYLL"];
             if(doc.id === 'doc_khaisinh') keysToCheck = ["BẢN SAO GIẤY KHAI SINH", "KHAI SINH"];
@@ -271,11 +274,11 @@
 
         filteredData = rawData.filter(row => {
             if (fDate || tDate) { 
-                const timeStr = getVal(row, ["TIME", "NGÀY XỬ LÝ"]).split(' ')[0];
+                const timeStr = getVal(row, ["TIME", "NGÀY NỘP", "NGÀY XỬ LÝ"]).split(' ')[0];
                 let rowDate = null;
                 if(timeStr.includes('-')){ const p=timeStr.split('-'); rowDate=new Date(p[0],p[1]-1,p[2]); }
                 else if(timeStr.includes('/')){ const p=timeStr.split('/'); rowDate=new Date(p[2],p[1]-1,p[0]); }
-                if (!rowDate) return false; 
+                if (!rowDate || isNaN(rowDate)) return false; 
                 if (fDate && rowDate < fDate) return false; 
                 if (tDate && rowDate > tDate) return false; 
             }
