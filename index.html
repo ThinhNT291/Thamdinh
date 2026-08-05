@@ -371,37 +371,94 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2jv-0IQpc1VAG
         document.getElementById('ws-checklist').innerHTML = `<p>Trạng thái trên form: <b>${hsStatus}</b></p>` + 
             (missing.length > 0 ? `<p style="color:#d84315;">Đang thiếu: ${missing.join(', ')}</p>` : `<p style="color:#2e7d32;">Đã nộp đủ hồ sơ tiên quyết.</p>`);
         
-        // Nhúng iFrame Drive
+      // Nhúng iFrame Drive
         const link = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]);
         const embedUrl = getDriveEmbedUrl(link);
-        document.getElementById('ws-iframe')
+        document.getElementById('ws-iframe').src = embedUrl ? embedUrl : 'about:blank';
+        if(!embedUrl) document.getElementById('ws-iframe').outerHTML = "<div style='padding:20px; text-align:center;'>Không có link Folder hoặc link không hợp lệ.</div>";
 
-        async function triggerSaveToSheet() {
-    if(!confirm(`Chốt dữ liệu thí sinh ${getVal(currentCandidate, ["TÊN SINH VIÊN"])} vào Sheet KETQUA chính thức?`)) return;
-
-    let btn = document.getElementById('btnSaveToResult');
-    btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
-
-    // Lấy toàn bộ dữ liệu hiện tại, bọc thêm các thông tin vừa được Web2 sinh ra
-    const payloadObject = { ...currentCandidate };
-    payloadObject["MÃ SINH VIÊN"] = document.getElementById('ws-masv').innerText; // Lấy mã SV tự động
-    payloadObject["KẾT QUẢ ĐIỂM"] = "Trúng tuyển"; // Có thể lấy tự động từ giao diện
-    
-    try {
-        const resp = await fetch(API_LUU_KETQUA, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify([payloadObject]) // Bọc Object vào Array
-        });
-        const result = await resp.json();
-        if(result.status === "success") {
-            alert(`✅ Đã chốt hồ sơ thành công vào KETQUA!`);
-            closeWorkspace(); // Đóng modal sau khi lưu xong
-        } else {
-            alert("Lỗi từ hệ thống: " + result.message);
-        }
-    } catch (e) {
-        alert("Lỗi kết nối mạng: " + e);
+        document.getElementById('workspaceModal').style.display = 'flex';
     }
-    btn.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET KETQUA"; btn.disabled = false;
-}
+
+    function closeWorkspace() { 
+        document.getElementById('workspaceModal').style.display = 'none'; 
+        document.getElementById('ws-iframe').src = ''; 
+    }
+
+    // =========================================================================
+    // API FUNCTIONS (THAY THẾ VBA EXCEL)
+    // =========================================================================
+    async function triggerApprove() {
+        if(!confirm(`Xác nhận Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${getVal(currentCandidate, ["TÊN SINH VIÊN"])}?`)) return;
+        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+
+        const payload = [{
+            soCCCD: getVal(currentCandidate, ["SỐ CCCD"]),
+            hoTen: getVal(currentCandidate, ["TÊN SINH VIÊN"]),
+            ngaySinh: getVal(currentCandidate, ["NGÀY SINH"]),
+            nganh: getVal(currentCandidate, ["NGÀNH"]),
+            ngayCapNhat: new Date().toLocaleDateString('vi-VN')
+        }];
+
+        try {
+            const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", body: JSON.stringify(payload) });
+            const result = await resp.json();
+            if(result.status === "success") { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}`); }
+            else { alert("Lỗi từ hệ thống: " + result.message); }
+        } catch (e) { alert("Lỗi kết nối mạng: " + e); }
+        btn.innerText = "✅ DUYỆT TRÚNG TUYỂN & GỬI BIÊN NHẬN"; btn.disabled = false;
+    }
+
+    async function triggerMissing() {
+        const hosoThieu = prompt(`Nhập tên hồ sơ còn thiếu để báo cho ${getVal(currentCandidate, ["TÊN SINH VIÊN"])}:`, "Bản sao Học bạ THPT");
+        if(!hosoThieu) return;
+        let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+
+        const payload = [{
+            soCCCD: getVal(currentCandidate, ["SỐ CCCD"]),
+            hoTen: getVal(currentCandidate, ["TÊN SINH VIÊN"]),
+            hosoThieu: "Thiếu: " + hosoThieu,
+            ngayCapNhat: new Date().toLocaleDateString('vi-VN')
+        }];
+
+        try {
+            const resp = await fetch(API_BAO_THIEU, { method: "POST", body: JSON.stringify(payload) });
+            const result = await resp.json();
+            if(result.status === "success") { alert(`✅ Đã gửi biên nhận Báo thiếu!\nLink PDF: ${result.pdfUrl}`); }
+            else { alert("Lỗi từ hệ thống: " + result.message); }
+        } catch (e) { alert("Lỗi kết nối mạng: " + e); }
+        btn.innerText = "⚠️ BÁO THIẾU HỒ SƠ & GỬI BIÊN NHẬN"; btn.disabled = false;
+    }
+
+    async function triggerSaveToSheet() {
+        if(!confirm(`Chốt dữ liệu thí sinh ${getVal(currentCandidate, ["TÊN SINH VIÊN"])} vào Sheet KETQUA chính thức?`)) return;
+
+        let btn = document.getElementById('btnSaveToResult');
+        btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
+
+        // Lấy toàn bộ dữ liệu hiện tại, bọc thêm các thông tin vừa được Web2 sinh ra
+        const payloadObject = { ...currentCandidate };
+        payloadObject["MÃ SINH VIÊN"] = document.getElementById('ws-masv').innerText; // Lấy mã SV tự động
+        payloadObject["KẾT QUẢ ĐIỂM"] = "Trúng tuyển"; // Chốt cứng trạng thái điểm
+        
+        try {
+            const resp = await fetch(API_LUU_KETQUA, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify([payloadObject]) // Bọc Object vào Array
+            });
+            const result = await resp.json();
+            if(result.status === "success") {
+                alert(`✅ Đã chốt hồ sơ thành công vào KETQUA!`);
+                closeWorkspace(); // Đóng modal sau khi lưu xong
+            } else {
+                alert("Lỗi từ hệ thống: " + result.message);
+            }
+        } catch (e) {
+            alert("Lỗi kết nối mạng: " + e);
+        }
+        btn.innerText = "💾 CHỐT KẾT QUẢ VÀO SHEET KETQUA"; btn.disabled = false;
+    }
+</script>
+</body>
+</html>
