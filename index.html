@@ -62,7 +62,7 @@
     </div>
 </div>
 
-<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</i></div>
+<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
 
 <!-- WORKSPACE MODAL -->
 <div id="workspaceModal" class="workspace-overlay">
@@ -160,15 +160,18 @@
         });
     }
 
+    // BẢN FIX SIÊU CẤP: LỌC SẠCH MỌI DẤU XUỐNG DÒNG VÀ DẤU CÁCH THỪA CỦA GOOGLE SHEET
     function getVal(row, keys) {
         for (let k of keys) {
-            let searchKey = k.trim().toUpperCase();
-            for (let rowKey in row) { if (rowKey.trim().toUpperCase() === searchKey) return (row[rowKey] || "").trim(); } 
+            let searchKey = k.trim().toUpperCase().replace(/\s+/g, ' ');
+            for (let rowKey in row) { 
+                let cleanRowKey = rowKey.trim().toUpperCase().replace(/\s+/g, ' ');
+                if (cleanRowKey === searchKey) return (row[rowKey] || "").trim(); 
+            } 
         } 
         return "";
     }
 
-    // BẢN FIX MỚI: BỘ MÁY QUÉT HỒ SƠ CHỐNG TRÙNG LẶP CỘT "CCCD"
     function getMissingDocs(row) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
@@ -176,7 +179,6 @@
         let missing = [];
         
         [...dsChung, ...dsTienQuyet].forEach(doc => {
-            // Tạo một mảng các tên cột dự phòng để tránh quét nhầm cột Text (Đặc biệt là CCCD)
             let keysToCheck = [doc.name];
             if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
             if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
@@ -203,7 +205,6 @@
         return `${maNam}${maHe}${maHinhThuc}${maCCCD}`;
     }
 
-    // Hàm chung tính điểm tốt nhất để hiển thị ra Danh sách và Xuất Excel
     function getBestScoreText(row) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         if (dtDauVao === "Tốt nghiệp THPT") {
