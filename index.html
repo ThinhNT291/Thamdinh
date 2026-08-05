@@ -47,9 +47,14 @@
         /* WORKSPACE MODAL */
         .workspace-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 9999; }
         .workspace-modal { background: #fff; width: 95%; max-width: 1000px; max-height: 95vh; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .ws-header { background: #004d40; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
+        .ws-header { background: #004d40; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
         .ws-body { padding: 12px 15px; overflow-y: auto; background: #fafafa; }
         
+        /* Nav Buttons */
+        .nav-btn { background: #00695c; color: white; border: 1px solid #004d40; border-radius: 3px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .nav-btn:hover:not(:disabled) { background: #00897b; }
+        .nav-btn:disabled { background: #004d40; color: #888; cursor: not-allowed; border-color: #00332a; }
+
         .ws-section-title { font-size: 12px; color: var(--primary-dark); border-bottom: 2px solid #b2ebf2; padding-bottom: 2px; margin: 10px 0 6px 0; font-weight: bold; text-transform: uppercase; }
         .ws-section-title:first-child { margin-top: 0; }
         
@@ -63,15 +68,16 @@
         .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
         .link-card:hover { background: #b2dfdb; }
 
-        .combo-table { width: 100%; border-collapse: collapse; margin-top: 4px; background: #fff; }
-        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 4px; text-align: center; font-size: 11px; }
+        /* THU GỌN BẢNG TỔ HỢP ĐIỂM */
+        .combo-table { width: 100%; border-collapse: collapse; margin-top: 2px; background: #fff; }
+        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 2px 4px; text-align: center; font-size: 11px; line-height: 1.1; }
         .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
         .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffca28; font-weight: bold; }
 
-        .cross-check-box { background: #fff3e0; border: 1px dashed #ffb74d; padding: 8px; border-radius: 4px; margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .cross-check-box select { flex: 1; min-width: 200px; padding: 5px; border-radius: 3px; border: 1px solid #ffb74d; font-weight: bold; color: #e65100; font-size: 12px; outline:none; }
+        .cross-check-box { background: #fff3e0; border: 1px dashed #ffb74d; padding: 4px 8px; border-radius: 4px; margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .cross-check-box select { flex: 1; min-width: 200px; padding: 4px; border-radius: 3px; border: 1px solid #ffb74d; font-weight: bold; color: #e65100; font-size: 12px; outline:none; }
 
-        .action-buttons { margin-top: 12px; display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+        .action-buttons { margin-top: 10px; display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
         .btn-action { flex: 1; min-width: 150px; padding: 8px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-action.pass { background: #2e7d32; } .btn-action.pass:hover:not(:disabled) { background: #1b5e20; }
         .btn-action.missing { background: #c62828; } .btn-action.missing:hover:not(:disabled) { background: #b71c1c; }
@@ -146,7 +152,11 @@
     <div class="workspace-modal">
         <div class="ws-header">
             <span>HỒ SƠ THÍ SINH: <span id="ws-fullname-title" style="color: #ffd54f;"></span></span>
-            <span style="cursor: pointer; font-size: 20px;" onclick="closeWorkspace()">✖</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="nav-btn" id="btnPrevWS" onclick="prevWorkspace()">◀ Trước</button>
+                <button class="nav-btn" id="btnNextWS" onclick="nextWorkspace()">Tiếp ▶</button>
+                <span style="cursor: pointer; font-size: 20px; margin-left: 10px;" onclick="closeWorkspace()">✖</span>
+            </div>
         </div>
         <div class="ws-body">
             
@@ -176,7 +186,6 @@
             </div>
 
             <div class="action-buttons">
-                <!-- Đã di chuyển nút Link lên trên, chỉ còn các nút chức năng ở đây -->
                 <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ Y/C BỔ SUNG HS</button>
                 <button class="btn-action pass" id="btnApprove" onclick="triggerApprove()">✅ DUYỆT TRÚNG TUYỂN</button>
                 <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 LƯU VÀO CSDL</button>
@@ -186,10 +195,7 @@
 </div>
 
 <script>
-    // 1. CẤU HÌNH API
     const SHEET_ID = "1DBYrAObOLR7jtj74B_jBHVDf2I07UXc8zpgppvbabbs";
-    
-    // Đã thay đổi hoàn toàn cách kéo dữ liệu: Dùng Export CSV thô để không bao giờ bị nuốt dòng số 1
     const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&t=${new Date().getTime()}`;
     
     const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
@@ -344,6 +350,36 @@
         });
     }
 
+    // TÍNH NĂNG 1: XUẤT EXCEL (ĐÃ CẬP NHẬT)
+    function exportExcel() {
+        if (filteredData.length === 0) { alert("⚠️ Không có dữ liệu để xuất Excel!"); return; }
+        const exportData = filteredData.map((row, index) => {
+            let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
+            
+            // Tính toán lại trạng thái chính xác dựa trên hồ sơ tiên quyết
+            const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
+            const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; 
+            let missing = [];
+            dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
+            let hsStatus = missing.length > 0 ? "Thiếu hồ sơ" : "Đủ hồ sơ hợp lệ";
+
+            return {
+                "STT": getVal(row, ["STT"]) || (index + 1), 
+                "NGÀY CẬP NHẬT": getVal(row, ["TIME"]).split(' ')[0],
+                "MÃ SINH VIÊN": generateMaSV(row), 
+                "HỌ VÀ TÊN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
+                "NGÀNH ĐÀO TẠO": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
+                "ĐỐI TƯỢNG ĐẦU VÀO": getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]),
+                "TRẠNG THÁI HỒ SƠ": hsStatus, 
+                "LINK HỒ SƠ": cleanLink
+            };
+        });
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        worksheet['!cols'] = [{wch: 6}, {wch: 14}, {wch: 15}, {wch: 25}, {wch: 26}, {wch: 26}, {wch: 18}, {wch: 35}];
+        const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "DanhSachThamDinh");
+        XLSX.writeFile(workbook, `Danh_Sach_Loc_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
     function openDriveLink() {
         const row = filteredData[currentCandidateIndex];
         const link = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]);
@@ -354,6 +390,10 @@
         currentCandidateIndex = index;
         const row = filteredData[index];
         document.getElementById('ws-other-major').value = ""; 
+        
+        // Quản lý trạng thái Nút điều hướng
+        document.getElementById('btnPrevWS').disabled = (index === 0);
+        document.getElementById('btnNextWS').disabled = (index === filteredData.length - 1);
         
         const fullname = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
         document.getElementById('ws-fullname-title').innerText = fullname;
@@ -370,6 +410,10 @@
         updateModalActionButtons();
         document.getElementById('workspaceModal').style.display = 'flex';
     }
+
+    // TÍNH NĂNG 3: ĐIỀU HƯỚNG TRƯỚC / TIẾP
+    function prevWorkspace() { if (currentCandidateIndex > 0) openWorkspace(currentCandidateIndex - 1); }
+    function nextWorkspace() { if (currentCandidateIndex < filteredData.length - 1) openWorkspace(currentCandidateIndex + 1); }
 
     function calculateAndRenderScores(row, targetNganh) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
@@ -453,17 +497,27 @@
     function updateModalActionButtons() {
         const row = filteredData[currentCandidateIndex];
         const isSurveying = document.getElementById('ws-other-major').value !== "";
-        const btnA = document.getElementById('btnApprove'); const btnM = document.getElementById('btnMissing'); const btnS = document.getElementById('btnSaveToResult');
+        const btnA = document.getElementById('btnApprove'); 
+        const btnM = document.getElementById('btnMissing'); 
+        const btnS = document.getElementById('btnSaveToResult');
 
         if (isSurveying) {
             btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; return;
         }
 
-        btnA.disabled = (row._appState === "Đã duyệt"); btnM.disabled = (row._appState === "Đã báo thiếu");
-        btnA.innerText = row._appState === "Đã duyệt" ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
-        btnM.innerText = row._appState === "Đã báo thiếu" ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
+        // TÍNH NĂNG 4: KHÓA CHÉO NÚT BẤM
+        let isDuyet = (row._appState === "Đã duyệt");
+        let isBaoThieu = (row._appState === "Đã báo thiếu");
 
-        if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } else { btnS.disabled = false; btnS.innerText = "💾 LƯU KETQUA"; }
+        // Nếu ĐÃ DUYỆT hoặc ĐÃ BÁO THIẾU -> Cả 2 nút đều bị vô hiệu hóa
+        btnA.disabled = isDuyet || isBaoThieu; 
+        btnM.disabled = isDuyet || isBaoThieu; 
+
+        btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
+        btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
+
+        if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } 
+        else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
     }
 
     function closeWorkspace() { document.getElementById('workspaceModal').style.display = 'none'; }
@@ -505,7 +559,7 @@
 
     async function triggerSaveToSheet() {
         let row = filteredData[currentCandidateIndex];
-        if(!confirm(`Lưu ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])} vào Sheet KETQUA?`)) return;
+        if(!confirm(`Lưu ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])} vào CSDL?`)) return;
         let btn = document.getElementById('btnSaveToResult'); btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
         const payloadObject = { ...row };
@@ -516,8 +570,8 @@
             const result = await resp.json();
             if(result.status === "success") { 
                 alert(`✅ Đã chốt hồ sơ thành công!`); row._saved = true; updateModalActionButtons();
-            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU KETQUA";}
-        } catch (e) { alert("Lỗi mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU KETQUA";}
+            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU VÀO CSDL";}
+        } catch (e) { alert("Lỗi mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU VÀO CSDL";}
     }
 
 </script>
