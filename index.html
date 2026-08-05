@@ -142,17 +142,17 @@
         Papa.parse(CSV_URL, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(results) {
-              rawData = results.data.map(row => { 
-    let trangThaiThamDinh = getVal(row, ["TRẠNG THÁI THẨM ĐỊNH"]);
-    let state = null; let saved = false;
-    
-    if(trangThaiThamDinh.includes("Đã duyệt")) { state = "Đã duyệt"; saved = true; }
-    else if(trangThaiThamDinh.includes("Đã báo thiếu")) { state = "Đã báo thiếu"; }
-    else if(trangThaiThamDinh.includes("Mới bổ sung")) { state = "Mới bổ sung"; } // <-- Bổ sung dòng này
-    
-    row._appState = state; row._saved = saved; 
-    return row; 
-});
+                rawData = results.data.map(row => { 
+                    let trangThaiThamDinh = getVal(row, ["TRẠNG THÁI THẨM ĐỊNH"]);
+                    let state = null; let saved = false;
+                    
+                    if(trangThaiThamDinh.includes("Đã duyệt")) { state = "Đã duyệt"; saved = true; }
+                    else if(trangThaiThamDinh.includes("Đã báo thiếu")) { state = "Đã báo thiếu"; }
+                    else if(trangThaiThamDinh.includes("Mới bổ sung")) { state = "Mới bổ sung"; }
+                    
+                    row._appState = state; row._saved = saved; 
+                    return row; 
+                });
                 filteredData = [...rawData];
                 populateFilters(); applyFilters();
                 document.getElementById('last-updated').innerText = `✔ Đồng bộ: ${new Date().toLocaleTimeString('vi-VN')}`;
@@ -166,6 +166,22 @@
             for (let rowKey in row) { if (rowKey.trim().toUpperCase() === searchKey) return (row[rowKey] || "").trim(); } 
         } 
         return "";
+    }
+
+    // BỘ MÁY QUÉT HỒ SƠ TỔNG LỰC (QUÉT CẢ HS CHUNG LẪN HS TIÊN QUYẾT)
+    function getMissingDocs(row) {
+        const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
+        const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
+        const dsChung = DICT_HO_SO.chung || [];
+        let missing = [];
+        
+        [...dsChung, ...dsTienQuyet].forEach(doc => {
+            let val = getVal(row, [doc.name]).toUpperCase();
+            if (val !== "TRUE" && val !== "1" && val !== "V" && val !== "X" && val !== "CÓ") {
+                missing.push(doc.name);
+            }
+        });
+        return missing;
     }
 
     function generateMaSV(row) {
@@ -252,9 +268,8 @@
             if (nVal && getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]) !== nVal) return false;
             if (dVal && getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]) !== dVal) return false;
             
-            const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
-            const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missingCount = 0;
-            dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missingCount++; });
+            let missing = getMissingDocs(row);
+            let missingCount = missing.length;
             
             if (hVal === "đủ" && missingCount > 0) return false;
             if (hVal === "thiếu" && missingCount === 0) return false;
@@ -264,10 +279,7 @@
         document.getElementById('kpi-total').innerText = filteredData.length;
         let docsCount = 0;
         filteredData.forEach(row => {
-            const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
-            const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = false;
-            dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing = true; });
-            if(!missing) docsCount++;
+            if(getMissingDocs(row).length === 0) docsCount++;
         });
         document.getElementById('kpi-docs').innerText = docsCount;
         
@@ -297,9 +309,7 @@
                 btnClass = "btn-review update-state"; 
             }
 
-            const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
-            const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = [];
-            dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
+            let missing = getMissingDocs(row);
             
             let badge = missing.length > 0 
                 ? `<span class="badge badge-warning" style="white-space:normal;text-align:left;">Thiếu: ${missing.join(', ')}</span>` 
@@ -332,11 +342,8 @@
             let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
             let cccdStr = getVal(row, ["CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
             
-            const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
-            const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; 
-            let missing = [];
-            dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
-            let hsStatus = missing.length > 0 ? "Thiếu hồ sơ" : "Đủ hồ sơ hợp lệ";
+            let missing = getMissingDocs(row);
+            let hsStatus = missing.length > 0 ? "Thiếu hồ sơ: " + missing.join(', ') : "Đủ hồ sơ hợp lệ";
             
             // Xóa các tag HTML để in chữ thô ra Excel
             let rawScoreText = getBestScoreText(row).replace(/<[^>]+>/g, '');
@@ -475,9 +482,7 @@
         document.getElementById('ws-score-summary').innerHTML = summaryHTML;
         document.getElementById('ws-combo-list-container').innerHTML = comboHTML;
 
-        const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = [];
-        dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
-        
+        let missing = getMissingDocs(row);
         let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ hợp lệ</span>`;
         document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
     }
