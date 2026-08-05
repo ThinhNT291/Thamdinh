@@ -68,9 +68,9 @@
         .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
         .link-card:hover { background: #b2dfdb; }
 
-        /* THU GỌN BẢNG TỔ HỢP ĐIỂM SÁT NỘI DUNG */
-        .combo-table { width: max-content; border-collapse: collapse; margin: 5px auto; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 3px 8px; text-align: center; font-size: 11px; line-height: 1.2; }
+        /* THU GỌN BẢNG TỔ HỢP ĐIỂM THEO YÊU CẦU */
+        .combo-table { width: max-content; border-collapse: collapse; margin: 5px auto; background: #fff; }
+        .combo-table th, .combo-table td { border: 1px solid #eee; padding: 2px 8px; text-align: center; font-size: 11px; line-height: 1.1; }
         .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
         .combo-table tr.best-combo { background: #fff8e1; border: 2px solid #ffca28; font-weight: bold; }
 
@@ -89,7 +89,7 @@
             .action-buttons { flex-direction: column; }
             .btn-action { width: 100%; min-width: 100%; padding: 12px; font-size: 13px; }
             .filter-group { min-width: 48%; }
-            .combo-table { width: 100%; } /* Trả lại 100% trên điện thoại để dễ đọc */
+            .combo-table { width: 100%; } /* Trả lại full màn hình trên đt */
             .copyright { right: 50%; transform: translateX(50%); bottom: 5px; font-size: 10px; width: max-content; }
         }
         @media (max-width: 480px) {
@@ -522,7 +522,6 @@
         if(!confirm(`Gửi BIÊN NHẬN TRÚNG TUYỂN cho thí sinh ${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])}?`)) return;
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
-        // Bổ sung thêm "nganh" vào payload để Backend dùng làm điều kiện Khóa phức hợp (CCCD + Ngành)
         const payload = [{ 
             soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
             hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]), 
@@ -532,7 +531,6 @@
         }];
 
         try {
-            // FIX LỖI CORS / NETWORK ERROR BẰNG CÁCH THÊM HEADERS "text/plain"
             const resp = await fetch(API_TRUNG_TUYEN, { 
                 method: "POST", 
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -552,7 +550,6 @@
         if(!hosoThieu) return;
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
-        // Bổ sung thêm "nganh" vào payload để Backend quét chính xác dòng
         const payload = [{ 
             soCCCD: getVal(row, ["CCCD", "SỐ CCCD"]), 
             hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]), 
