@@ -63,7 +63,6 @@
 
 <div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
 
-<!-- WORKSPACE MODAL -->
 <div id="workspaceModal" class="workspace-overlay">
     <div class="workspace-modal">
         <div class="ws-header">
@@ -132,9 +131,6 @@
     window.onload = () => {
         document.getElementById('filter-from').value = "2026-01-01";
         
-        // ----------------------------------------------------
-        // ĐÃ FIX LỖI MÚI GIỜ: Ép lấy ngày hiện tại theo giờ Việt Nam
-        // ----------------------------------------------------
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -168,9 +164,6 @@
         });
     }
 
-    // ----------------------------------------------------
-    // HÀM GETVAL SIÊU CẤP: DỌN SẠCH ENTER (\n) CỦA GOOGLE SHEET
-    // ----------------------------------------------------
     function getVal(row, keys) {
         for (let k of keys) {
             let searchKey = k.trim().toUpperCase().replace(/\s+/g, ' ');
@@ -182,9 +175,6 @@
         return "";
     }
 
-    // ----------------------------------------------------
-    // HÀM QUÉT HỒ SƠ: CHỐNG TRÙNG LẶP CHỮ "CCCD" 
-    // ----------------------------------------------------
     function getMissingDocs(row) {
         const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
@@ -193,8 +183,10 @@
         
         [...dsChung, ...dsTienQuyet].forEach(doc => {
             let keysToCheck = [doc.name];
-            // Ép nó đi tìm đúng cái chữ "BẢN SAO CCCD" thay vì lạc sang cột CĂN CƯỚC
-            if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
+            
+            // Đã Bổ sung chìa khóa BẢN SAO ID vào đây
+            if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO ID", "BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
+            
             if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
             if(doc.id === 'doc_syll') keysToCheck = ["SƠ YẾU LÝ LỊCH", "SYLL"];
             if(doc.id === 'doc_khaisinh') keysToCheck = ["BẢN SAO GIẤY KHAI SINH", "KHAI SINH"];
