@@ -419,7 +419,7 @@
                 "NGÀNH ĐÀO TẠO": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
                 "ĐỐI TƯỢNG ĐẦU VÀO": getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]),
                 "ĐIỂM/ TỔ HỢP": rawScoreText,
-                "HỒ SƠ TIÊN QUYẾT": hsStatus, 
+                "HỒ SƠ": hsStatus, 
                 "TRẠNG THÁI THẨM ĐỊNH": row._appState || "Đang chờ duyệt",
                 "LINK HỒ SƠ": cleanLink
             };
@@ -431,7 +431,7 @@
             "STT": `Dữ liệu cập nhật đến ngày ${nowStr}`,
             "NGÀY NỘP": "", "MÃ SINH VIÊN": "", "CCCD": "", "HỌ VÀ TÊN": "", 
             "NGÀNH ĐÀO TẠO": "", "ĐỐI TƯỢNG ĐẦU VÀO": "", "ĐIỂM/ TỔ HỢP": "", 
-            "HỒ SƠ TIÊN QUYẾT": "", "TRẠNG THÁI THẨM ĐỊNH": "", "LINK HỒ SƠ": ""
+            "HỒ SƠ": "", "TRẠNG THÁI THẨM ĐỊNH": "", "LINK HỒ SƠ": ""
         });
 
         const worksheet = XLSX.utils.json_to_sheet(exportData);
