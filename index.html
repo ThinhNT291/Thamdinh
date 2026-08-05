@@ -100,15 +100,15 @@
     </h1>
 
     <div class="kpi-grid">
-        <div class="kpi-card"><span class="kpi-title">📁 Tổng số hồ sơ lọc được</span><span class="kpi-value" id="kpi-total">0</span></div>
-        <div class="kpi-card"><span class="kpi-title">📑 Hồ sơ đủ điều kiện</span><span class="kpi-value" style="color: #2980b9;" id="kpi-docs">0</span></div>
+        <div class="kpi-card"><span class="kpi-title">📁 Tổng số hồ sơ: </span><span class="kpi-value" id="kpi-total">0</span></div>
+        <div class="kpi-card"><span class="kpi-title">📑 Thí sinh đủ hồ sơ: </span><span class="kpi-value" style="color: #2980b9;" id="kpi-docs">0</span></div>
     </div>
 
     <div class="filter-box">
         <div class="filter-group"><label>Từ ngày:</label><input type="date" id="filter-from" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Đến ngày:</label><input type="date" id="filter-to" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Ngành đào tạo:</label><select id="filter-nganh" onchange="applyFilters()"><option value="">-- Tất cả ngành --</option></select></div>
-        <div class="filter-group"><label>Đối tượng:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
+        <div class="filter-group"><label>Đối tượng đầu vào:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
         <div class="filter-group"><label>Trạng thái hồ sơ:</label>
             <select id="filter-hoso" onchange="applyFilters()"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
         </div>
@@ -154,26 +154,24 @@
             <div class="info-grid">
                 <div class="info-card"><span class="info-label">Số Căn cước</span><span class="info-val" id="ws-cccd"></span></div>
                 <div class="info-card"><span class="info-label">Họ và Tên</span><span class="info-val" id="ws-fullname"></span></div>
-                <div class="info-card"><span class="info-label">Mã SV Đề Xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
+                <div class="info-card"><span class="info-label">Mã SV Đề xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
                 <div class="info-card"><span class="info-label">Hệ đào tạo</span><span class="info-val" id="ws-hedt"></span></div>
                 <div class="info-card"><span class="info-label">Hình thức đào tạo</span><span class="info-val" id="ws-hinhthuc"></span></div>
-                <div class="info-card"><span class="info-label">Ngành Xét Tuyển</span><span class="info-val" id="ws-nganh"></span></div>
-                <div class="info-card"><span class="info-label">Khu vực / Đối tượng UT</span><span class="info-val" id="ws-kvdt"></span></div>
-                
-                <!-- BỎ SPAN 2, CHÈN THÊM Ô NÚT LINK VÀO ĐÚNG CHỖ ĐÁNH DẤU X -->
+                <div class="info-card"><span class="info-label">Ngành xét tuyển</span><span class="info-val" id="ws-nganh"></span></div>
+                <div class="info-card"><span class="info-label">Khu vực / Đối tượng ưu tiên</span><span class="info-val" id="ws-kvdt"></span></div>
                 <div class="info-card"><span class="info-label">Trạng thái hồ sơ</span><span class="info-val" id="ws-hoso-status"></span></div>
                 <div class="info-card link-card" onclick="openDriveLink()">
-                    <span style="color: #00796b; font-weight: bold; font-size: 13px;">📁 MỞ LINK MINH CHỨNG</span>
+                    <span style="color: #00796b; font-weight: bold; font-size: 13px;">📁 Kiểm tra hồ sơ</span>
                 </div>
             </div>
 
-            <div class="ws-section-title">II. KẾT QUẢ ĐIỂM SỐ</div>
+            <div class="ws-section-title">II. KẾT QUẢ ĐIỂM</div>
             <div id="ws-score-summary" class="info-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
             
             <div id="ws-combo-list-container"></div>
 
             <div class="cross-check-box">
-                <span style="font-weight:bold; color:#e65100;">🔄 Xem điểm ngành khác:</span>
+                <span style="font-weight:bold; color:#e65100;">🔄 Thử xét qua ngành khác:</span>
                 <select id="ws-other-major" onchange="handleCrossCheckChange()"><option value="">- Quay lại ngành ban đầu -</option></select>
             </div>
 
@@ -181,7 +179,7 @@
                 <!-- Đã di chuyển nút Link lên trên, chỉ còn các nút chức năng ở đây -->
                 <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ Y/C BỔ SUNG HS</button>
                 <button class="btn-action pass" id="btnApprove" onclick="triggerApprove()">✅ DUYỆT TRÚNG TUYỂN</button>
-                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 LƯU KETQUA</button>
+                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 LƯU VÀO CSDL</button>
             </div>
         </div>
     </div>
@@ -404,9 +402,9 @@
                 let status = finalTotalScore >= 15.0 ? "<span style='color:#2e7d32;font-weight:bold'>ĐẠT</span>" : "<span style='color:#c62828;font-weight:bold'>TRƯỢT</span>";
                 
                 summaryHTML = `
-                    <div class="info-card"><span class="info-label">Cộng/Ưu Tiên</span><span class="info-val">${diemCong}đ / ${finalUTien.toFixed(2)}đ</span></div>
-                    <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">TRÚNG TUYỂN / TỔ HỢP</span><span class="info-val" style="font-size:15px; color:#2e7d32;">${finalTotalScore} <span style="font-size:12px;color:#555">(${bestCombo})</span></span></div>
-                    <div class="info-card"><span class="info-label">Điểm Chuẩn (15đ)</span><span class="info-val">${status}</span></div>
+                    <div class="info-card"><span class="info-label">Điểm cộng/ Điểm ưu tiên</span><span class="info-val">${diemCong}đ / ${finalUTien.toFixed(2)}đ</span></div>
+                    <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">ĐIỂM TRÚNG TUYỂN / TỔ HỢP</span><span class="info-val" style="font-size:15px; color:#2e7d32;">${finalTotalScore} <span style="font-size:12px;color:#555">(${bestCombo})</span></span></div>
+                    <div class="info-card"><span class="info-label">Điểm Chuẩn (15 Đ)</span><span class="info-val">${status}</span></div>
                 `;
             } else { 
                 summaryHTML = `<div class="info-card" style="grid-column: span 3;"><i>Chưa đủ dữ liệu điểm để xét tổ hợp môn.</i></div>`; 
@@ -521,6 +519,7 @@
             } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU KETQUA";}
         } catch (e) { alert("Lỗi mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU KETQUA";}
     }
+
 </script>
 </body>
 </html>
