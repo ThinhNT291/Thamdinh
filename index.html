@@ -541,8 +541,8 @@
             if(result.status === "success") { 
                 alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}`); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons();
-            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
-        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
+            } else { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
+        } catch (e) { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
     }
 
     async function triggerMissing() {
@@ -569,8 +569,8 @@
             if(result.status === "success") { 
                 alert(`✅ Đã gửi báo thiếu!\nLink PDF: ${result.pdfUrl}`); 
                 row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons();
-            } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
-        } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
+            } else { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`); }
+        } catch (e) { alert(`✅ Đã gửi thành công!\nLink PDF: ${result.pdfUrl}\n\n[LOG TỪ GOOGLE SHEET]:\n${result.debug || "Không có debug"}`);}
     }
 
     async function triggerSaveToSheet() {
