@@ -314,8 +314,8 @@
         document.getElementById('workspaceModal').style.display = 'flex';
     }
 
-    function calculateAndRenderScores(row, targetNganh) {
-        const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO"]);
+function calculateAndRenderScores(row, targetNganh) {
+        const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
         document.getElementById('ws-nganh').innerText = targetNganh;
         document.getElementById('ws-nganh').style.color = (targetNganh !== getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])) ? "#e65100" : "#111";
 
@@ -349,7 +349,10 @@
                     <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">ĐIỂM TRÚNG TUYỂN (TỔNG)</span><span class="info-val" style="font-size:22px; color:#2e7d32;">${finalTotalScore}</span></div>
                     <div class="info-card"><span class="info-label">Đạt Chuẩn (15đ)</span><span class="info-val">${status}</span></div>
                 `;
-            } else { summaryHTML = "<div class="info-card" style="grid-column: span 3;"><i>Chưa đủ dữ liệu điểm để xét tổ hợp môn.</i></div>"; }
+            } else { 
+                // ĐÃ SỬA LỖI CÚ PHÁP TẠI ĐÂY BẰNG DẤU BACKTICK (`)
+                summaryHTML = `<div class="info-card" style="grid-column: span 3;"><i>Chưa đủ dữ liệu điểm để xét tổ hợp môn.</i></div>`; 
+            }
 
             if (comboResults.length > 0) {
                 comboHTML = `<table class="combo-table"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
@@ -377,10 +380,9 @@
         const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || []; let missing = [];
         dsTienQuyet.forEach(doc => { if (getVal(row, [doc.name.toUpperCase()]) !== "TRUE") missing.push(doc.name); });
         
-        let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ tiên quyết</span>`;
+        let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu hồ sơ tiên quyết: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ tiên quyết</span>`;
         document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
     }
-
     function handleCrossCheckChange() {
         const val = document.getElementById('ws-other-major').value;
         const row = filteredData[currentCandidateIndex];
