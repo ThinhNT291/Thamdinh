@@ -85,11 +85,11 @@
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <span class="kpi-title">📁 Tổng số hồ sơ lọc được</span>
+            <span class="kpi-title">📁 Tổng số hồ sơ</span>
             <span class="kpi-value" id="kpi-total">0</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-title">📑 Hồ sơ đủ điều kiện</span>
+            <span class="kpi-title">📑 Thí sinh đủ hồ sơ</span>
             <span class="kpi-value" style="color: #2980b9;" id="kpi-docs">0</span>
         </div>
     </div>
@@ -141,12 +141,12 @@
             
             <div class="ws-section-title">I. THÔNG TIN THÍ SINH</div>
             <div class="info-grid">
-                <div class="info-card"><span class="info-label">Số CCCD</span><span class="info-val" id="ws-cccd"></span></div>
+                <div class="info-card"><span class="info-label">Số Căn cước</span><span class="info-val" id="ws-cccd"></span></div>
                 <div class="info-card"><span class="info-label">Họ và Tên</span><span class="info-val" id="ws-fullname"></span></div>
                 <div class="info-card"><span class="info-label">Mã SV Đề Xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
                 <div class="info-card"><span class="info-label">Ngành Xét Tuyển</span><span class="info-val" id="ws-nganh"></span></div>
-                <div class="info-card"><span class="info-label">Khu vực / Đối tượng UT</span><span class="info-val" id="ws-kvdt"></span></div>
-                <div class="info-card"><span class="info-label">Link Minh Chứng</span><span class="info-val" id="ws-link"></span></div>
+                <div class="info-card"><span class="info-label">Khu vực / Đối tượng ưu tiên</span><span class="info-val" id="ws-kvdt"></span></div>
+                <div class="info-card"><span class="info-label">Link Hồ sơ</span><span class="info-val" id="ws-link"></span></div>
             </div>
 
             <div class="ws-section-title">II. TRẠNG THÁI HỒ SƠ</div>
@@ -158,16 +158,16 @@
             <div id="ws-combo-list-container"></div>
 
             <div class="cross-check-box">
-                <span style="font-weight:bold; color:#e65100;">🔄 Khảo sát khả năng đỗ ngành khác:</span>
+                <span style="font-weight:bold; color:#e65100;">🔄 Xem điểm xét ngành khác:</span>
                 <select id="ws-other-major" onchange="handleCrossCheckChange()">
-                    <option value="">-- Trở lại ngành gốc của thí sinh --</option>
+                    <option value="">- Quay lại ngành ban đầu -</option>
                 </select>
             </div>
 
             <div class="action-buttons">
-                <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ BÁO THIẾU HỒ SƠ</button>
+                <button class="btn-action missing" id="btnMissing" onclick="triggerMissing()">⚠️ YÊU CẦU BỔ SUNG HỒ SƠ</button>
                 <button class="btn-action pass" id="btnApprove" onclick="triggerApprove()">✅ DUYỆT ĐỦ HỒ SƠ & TRÚNG TUYỂN</button>
-                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 CHỐT KẾT QUẢ VÀO KETQUA</button>
+                <button class="btn-action save" id="btnSaveToResult" onclick="triggerSaveToSheet()">💾 LƯU VÀO CSDL</button>
             </div>
         </div>
     </div>
@@ -307,7 +307,7 @@
         // LINK HỒ SƠ
         let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '').trim();
         if (cleanLink && !cleanLink.startsWith("http")) cleanLink = "https://" + cleanLink;
-        document.getElementById('ws-link').innerHTML = cleanLink ? `<a href="${cleanLink}" target="_blank" class="btn-link">🔗 Mở Google Drive ↗</a>` : "<i>Không có</i>";
+        document.getElementById('ws-link').innerHTML = cleanLink ? `<a href="${cleanLink}" target="_blank" class="btn-link">🔗 Mở hồ sơ ↗</a>` : "<i>Không có</i>";
 
         calculateAndRenderScores(row, getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]));
         updateModalActionButtons();
