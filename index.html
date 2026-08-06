@@ -6,7 +6,7 @@
     <title>Hệ Thống Thẩm Định Hồ Sơ</title>
     
     <!-- Link CSS TƯƠNG ĐỐI (Chỉ gọi file trong cùng Repo) -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -28,6 +28,10 @@
         <div class="filter-group"><label>Từ ngày:</label><input type="date" id="filter-from" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Đến ngày:</label><input type="date" id="filter-to" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Ngành đào tạo:</label><select id="filter-nganh" onchange="applyFilters()"><option value="">-- Tất cả ngành --</option></select></div>
+        
+        <!-- ĐÃ PHỤC HỒI LẠI BỘ LỌC ĐỐI TƯỢNG -->
+        <div class="filter-group"><label>Đối tượng đầu vào:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
+        
         <div class="filter-group"><label>Trạng thái HS:</label>
             <select id="filter-hoso" onchange="applyFilters()"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
         </div>
@@ -67,7 +71,7 @@
                     <th style="width: 100px; text-align: center;">THẨM ĐỊNH</th>
                 </tr>
             </thead>
-            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang tải dữ liệu...</td></tr></tbody>
+            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang kết nối tới Google Cloud...</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -116,8 +120,24 @@
     </div>
 </div>
 
-<!-- GỌI SCRIPT: Cấu hình chung và Code riêng của Web2 (Tương đối 100%) -->
-<script src="data_config.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<!-- ============================================== -->
+<!-- KHUNG MODAL THÔNG BÁO CUSTOM (THAY THẾ BROWSER ALERT) -->
+<!-- ============================================== -->
+<div id="customModal" class="workspace-overlay" style="z-index: 100000; display: none;">
+    <div class="workspace-modal" style="width: 90%; max-width: 450px; height: auto;">
+        <div id="modalHeader" class="ws-header" style="font-size: 14px;"></div>
+        <div id="modalBody" class="ws-body" style="padding: 20px 15px; font-size: 14px; white-space: pre-line; line-height: 1.5; color: #333;"></div>
+        
+        <!-- Khung này chỉ hiện khi dùng hàm showPrompt (yêu cầu nhập liệu) -->
+        <div id="modalPromptContainer" style="display:none; padding: 0 15px 15px 15px; background: #fafafa;">
+            <input type="text" id="modalPromptInput" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; outline: none;">
+        </div>
+        
+        <div id="modalFooter" style="padding: 10px 15px; background: #f1f1f1; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 8px;"></div>
+    </div>
+</div>
+
+<script src="data_config.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
