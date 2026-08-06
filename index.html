@@ -558,11 +558,18 @@
         } catch (e) { alert("Lỗi kết nối: " + e); btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
     }
 
-    async function triggerMissing() {
+async function triggerMissing() {
         let row = filteredData[currentCandidateIndex];
         let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-        const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${hoTen}:`, "Bản sao Học bạ THPT");
+
+        // TỰ ĐỘNG TÌM VÀ LIỆT KÊ CÁC HỒ SƠ ĐANG THIẾU
+        let missingArray = getMissingDocs(row);
+        let defaultMissingText = missingArray.length > 0 ? missingArray.join(', ') : "";
+
+        // Điền sẵn danh sách thiếu vào ô nhập liệu
+        const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${hoTen}:`, defaultMissingText);
         if(!hosoThieu) return;
+        
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
         const payload = [{ 
