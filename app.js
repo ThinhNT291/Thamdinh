@@ -405,7 +405,7 @@ async function syncToDaoTao() {
 }
 
 // ==========================================
-// WORKSPACE: KHUNG DUYỆT HỒ SƠ CHI TIẾT (ĐÃ PHỤC HỒI 100%)
+// WORKSPACE: KHUNG DUYỆT HỒ SƠ CHI TIẾT (ĐÃ PHỤC HỒI Y NHƯ CŨ)
 // ==========================================
 function openWorkspace(index) {
     currentCandidateIndex = index;
@@ -442,7 +442,7 @@ function openDriveLink() {
 function prevWorkspace() { if (currentCandidateIndex > 0) openWorkspace(currentCandidateIndex - 1); }
 function nextWorkspace() { if (currentCandidateIndex < filteredData.length - 1) openWorkspace(currentCandidateIndex + 1); }
 
-// CHÍNH LÀ ĐOẠN NÀY ĐÃ ĐƯỢC PHỤC HỒI 100% GIAO DIỆN BẢNG ĐIỂM CỦA ÔNG
+// ĐÃ KHÔI PHỤC CHÍNH XÁC NỘI DUNG VĂN BẢN VÀ BẢNG ĐIỂM SẠCH SẼ
 function calculateAndRenderScores(row, targetNganh) {
     const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
     document.getElementById('ws-nganh').innerText = targetNganh;
@@ -510,7 +510,7 @@ function calculateAndRenderScores(row, targetNganh) {
     document.getElementById('ws-combo-list-container').innerHTML = comboHTML;
 
     let missing = getMissingDocs(row);
-    let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ hợp lệ</span>`;
+    let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đủ hồ sơ</span>`;
     document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
 }
 
@@ -522,9 +522,7 @@ function handleCrossCheckChange() {
     updateModalActionButtons();
 }
 
-// ==========================================
-// LOGIC KHÓA/MỞ 3 NÚT BẤM (CỰC KỲ XỊN XÒ THEO Ý ÔNG)
-// ==========================================
+// ĐÃ KHÔI PHỤC LOGIC KHÓA MỞ 3 NÚT BẤM (CHỈ DISABLED, KHÔNG LÀM MẤT NÚT)
 function updateModalActionButtons() {
     const row = filteredData[currentCandidateIndex];
     const isSurveying = document.getElementById('ws-other-major').value !== "";
@@ -532,30 +530,21 @@ function updateModalActionButtons() {
     const btnM = document.getElementById('btnMissing'); 
     const btnS = document.getElementById('btnSaveToResult');
 
-    // 1. Tắt tất cả nếu đang bật chế độ Khảo sát ngành
     if (isSurveying) {
-        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; 
-        btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; 
-        return;
+        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; return;
     }
 
     let isDuyet = (row._appState === "Đã duyệt");
     let isBaoThieu = (row._appState === "Đã báo thiếu");
-    let missingDocsCount = getMissingDocs(row).length;
 
-    // 2. Nút Báo Thiếu (⚠️ Y/C BỔ SUNG HS)
-    btnM.disabled = isDuyet; 
-    btnM.innerText = isDuyet ? "⚠️ Không thể báo thiếu" : (isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS");
+    btnA.disabled = isDuyet || isBaoThieu; 
+    btnM.disabled = isDuyet || isBaoThieu; 
 
-    // 3. Nút Duyệt (✅ DUYỆT TRÚNG TUYỂN)
-    btnA.disabled = isDuyet || missingDocsCount > 0;
-    if (isDuyet) btnA.innerText = "✅ Đã gửi Trúng Tuyển";
-    else if (missingDocsCount > 0) btnA.innerText = "❌ Đang thiếu hồ sơ";
-    else btnA.innerText = "✅ DUYỆT TRÚNG TUYỂN";
+    btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
+    btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
 
-    // 4. Nút Lưu CSDL (💾 LƯU VÀO CSDL)
-    btnS.disabled = row._saved;
-    btnS.innerText = row._saved ? "💾 Đã lưu hồ sơ vào KETQUA" : "💾 LƯU VÀO CSDL";
+    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } 
+    else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
 }
 
 async function triggerApprove() {
@@ -579,9 +568,8 @@ async function triggerApprove() {
             if(result.status === "success") { 
                 showAlert(`Hệ thống đã Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons(); window.open(result.pdfUrl, '_blank'); 
-            } else { showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); }
-        } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); }
-        btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN";
+            } else { showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
+        } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
     }, "XÁC NHẬN TRÚNG TUYỂN");
 }
 
@@ -606,9 +594,8 @@ async function triggerMissing() {
             if(result.status === "success") { 
                 showAlert(`Đã gửi thông báo yêu cầu bổ sung [${hosoThieu}] cho thí sinh ${hoTen}.`, "✅ THÀNH CÔNG", false); 
                 row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons(); 
-            } else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); }
-        } catch (e) { showAlert("Lỗi: " + e, "❌ LỖI", true); }
-        btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS";
+            } else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
+        } catch (e) { showAlert("Lỗi: " + e, "❌ LỖI", true); btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
     }, "YÊU CẦU BỔ SUNG HỒ SƠ");
 }
 
@@ -629,15 +616,16 @@ async function triggerSaveToSheet() {
             const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
             const result = await resp.json();
             if(result.status === "success") {
-                if (result.skipped > 0) showAlert(`Hồ sơ này đã được lưu từ trước trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
-                else {
+                if (result.skipped > 0) { 
+                    showAlert(`Hồ sơ này đã được lưu từ trước trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
+                    row._saved = true; updateModalActionButtons();
+                } else {
                     showAlert(`Đã lưu thành công vào CSDL dự phòng!`, "✅ LƯU THÀNH CÔNG", false);
                     row._saved = true; updateModalActionButtons();
                 }
             }
-            else showAlert("Lỗi: " + result.message, "❌ LỖI", true);
-        } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); }
-        btn.innerText = oldText; btn.disabled = false;
+            else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); btn.innerText = oldText; btn.disabled = false; }
+        } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); btn.innerText = oldText; btn.disabled = false; }
     }, "LƯU VÀO CSDL");
 }
 
