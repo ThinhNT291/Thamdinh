@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application Review Workspace</title>
+    <title>Hệ Thống Thẩm Định Hồ Sơ</title>
     
     <!-- GỌI FILE CSS LÀM ĐẸP (CHỈ GỌI FILE NỘI BỘ REPO 2) -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=21">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -45,10 +45,10 @@
     </div>
 
     <div class="action-bar">
-        <div style="font-weight: bold; color: #555; font-size: 12px;">👉 Danh sách có <span id="row-count" style="color: var(--primary); font-size: 15px;">0</span> hồ sơ</div>
+        <div style="font-weight: bold; color: #555; font-size: 12px;">👉 Đang hiển thị <span id="row-count" style="color: var(--primary); font-size: 15px;">0</span> hồ sơ</div>
         <!-- CỤM NÚT BẤM ĐÃ PHỤC HỒI NÚT ĐÀO TẠO -->
         <div style="display: flex; gap: 10px;">
-            <button class="btn-export" onclick="exportExcel()">📥 Export</button>
+            <button class="btn-export" onclick="exportExcel()">📥 Xuất Excel</button>
             <button class="btn-export" style="background:#28a745; border-color:#218838;" onclick="syncToDaoTao()" id="btnSyncDaoTao">🚀 Cập nhật cho Đào tạo</button>
         </div>
     </div>
@@ -69,7 +69,7 @@
                     <th style="width: 100px; text-align: center;">THẨM ĐỊNH</th>
                 </tr>
             </thead>
-            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang tải dữ liệu...</td></tr></tbody>
+            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang kết nối tới Google Cloud...</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -140,7 +140,9 @@
         <div id="modalFooter" style="padding: 10px 15px; background: #f1f1f1; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 8px;"></div>
     </div>
 </div>
-    <script src="data_config.js"></script>
-<script src="app.js"></script>
+
+<!-- GỌI SCRIPT: Cấu hình chung và Code riêng của Web2 (Tương đối 100%) -->
+<script src="data_config.js?v=21"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
