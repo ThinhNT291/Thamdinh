@@ -543,7 +543,7 @@ function updateModalActionButtons() {
     btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
     btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
 
-    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } 
+    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu CSDL"; } 
     else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
 }
 
@@ -552,8 +552,8 @@ async function triggerApprove() {
     if (getMissingDocs(row).length > 0) { showAlert("Không thể duyệt Trúng tuyển vì thí sinh vẫn CÒN THIẾU HỒ SƠ hợp lệ!", "⚠️ LỖI DUYỆT HỒ SƠ", true); return; }
     
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?\n\nHành động này sẽ tạo và gửi tự động Biên nhận PDF Trúng Tuyển.`, async () => {
-        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
+    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?`, async () => {
+        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Processing..."; btn.disabled = true;
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
             hoTen: hoTen, 
@@ -566,7 +566,7 @@ async function triggerApprove() {
             const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                showAlert(`Hệ thống đã Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
+                showAlert(`Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons(); window.open(result.pdfUrl, '_blank'); 
             } else { showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
         } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
@@ -603,7 +603,7 @@ async function triggerSaveToSheet() {
     let row = filteredData[currentCandidateIndex];
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
     
-    showConfirm(`Hành động này sẽ ghi chốt dữ liệu hồ sơ của <b>${hoTen}</b> vào Sheet Backup KETQUA (Cơ sở dữ liệu lưu trữ).\n\nBạn có muốn tiếp tục?`, async () => {
+    showConfirm(`Lưu hồ sơ của <b>${hoTen}</b> Cơ sở dữ liệu lưu trữ.\n\nBạn có muốn tiếp tục?`, async () => {
         let btn = document.getElementById('btnSaveToResult'); let oldText = btn.innerText;
         btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
