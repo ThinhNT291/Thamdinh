@@ -603,7 +603,7 @@ async function triggerMissing() {
             const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadObject]) });
             const result = await resp.json();
             if(result.status === "success") { 
-                alert(`✅ Đã chốt hồ sơ thành công!`); row._saved = true; updateModalActionButtons();
+                alert(`✅ Thành công!`); row._saved = true; updateModalActionButtons();
             } else { alert("Lỗi hệ thống: " + result.message); btn.disabled = false; btn.innerText = "💾 LƯU VÀO CSDL";}
         } catch (e) { alert("Lỗi mạng: " + e); btn.disabled = false; btn.innerText = "💾 LƯU VÀO CSDL";}
     }
