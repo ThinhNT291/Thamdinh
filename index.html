@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Thẩm Định Hồ Sơ</title>
     
-    <!-- Link CSS TƯƠNG ĐỐI (Chỉ gọi file trong cùng Repo) -->
-    <link rel="stylesheet" href="style.css">
+    <!-- GỌI FILE CSS LÀM ĐẸP (CHỈ GỌI FILE NỘI BỘ REPO 2) -->
+    <link rel="stylesheet" href="style.css?v=2">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -28,11 +28,8 @@
         <div class="filter-group"><label>Từ ngày:</label><input type="date" id="filter-from" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Đến ngày:</label><input type="date" id="filter-to" onchange="applyFilters()"></div>
         <div class="filter-group"><label>Ngành đào tạo:</label><select id="filter-nganh" onchange="applyFilters()"><option value="">-- Tất cả ngành --</option></select></div>
-        
-        <!-- ĐÃ PHỤC HỒI LẠI BỘ LỌC ĐỐI TƯỢNG -->
         <div class="filter-group"><label>Đối tượng đầu vào:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
-        
-        <div class="filter-group"><label>Trạng thái HS:</label>
+        <div class="filter-group"><label>Trạng thái hồ sơ:</label>
             <select id="filter-hoso" onchange="applyFilters()"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
         </div>
         <div class="filter-group"><label>Sắp xếp:</label>
@@ -44,11 +41,12 @@
                 <option value="status">Trạng thái thẩm định</option>
             </select>
         </div>
-        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa Lọc</button>
+        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa Bộ Lọc</button>
     </div>
 
     <div class="action-bar">
         <div style="font-weight: bold; color: #555; font-size: 12px;">👉 Đang hiển thị <span id="row-count" style="color: var(--primary); font-size: 15px;">0</span> hồ sơ</div>
+        <!-- CỤM NÚT BẤM ĐÃ PHỤC HỒI NÚT ĐÀO TẠO -->
         <div style="display: flex; gap: 10px;">
             <button class="btn-export" onclick="exportExcel()">📥 Xuất Excel</button>
             <button class="btn-export" style="background:#28a745; border-color:#218838;" onclick="syncToDaoTao()" id="btnSyncDaoTao">🚀 Cập nhật cho Đào tạo</button>
@@ -78,6 +76,9 @@
 
 <div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
 
+<!-- ============================================== -->
+<!-- WORKSPACE MODAL (BẢNG THẨM ĐỊNH CHI TIẾT) -->
+<!-- ============================================== -->
 <div id="workspaceModal" class="workspace-overlay">
     <div class="workspace-modal">
         <div class="ws-header">
@@ -89,6 +90,7 @@
             </div>
         </div>
         <div class="ws-body">
+            
             <div class="ws-section-title">I. THÔNG TIN THÍ SINH</div>
             <div class="info-grid">
                 <div class="info-card"><span class="info-label">Số Căn cước</span><span class="info-val" id="ws-cccd"></span></div>
@@ -99,11 +101,14 @@
                 <div class="info-card"><span class="info-label">Ngành xét tuyển</span><span class="info-val" id="ws-nganh"></span></div>
                 <div class="info-card"><span class="info-label">Khu vực / Đối tượng ưu tiên</span><span class="info-val" id="ws-kvdt"></span></div>
                 <div class="info-card"><span class="info-label">Trạng thái hồ sơ</span><span class="info-val" id="ws-hoso-status"></span></div>
-                <div class="info-card link-card" onclick="openDriveLink()"><span style="color: #00796b; font-weight: bold; font-size: 13px;">📁 Kiểm tra hồ sơ</span></div>
+                <div class="info-card link-card" onclick="openDriveLink()">
+                    <span style="color: #00796b; font-weight: bold; font-size: 13px;">📁 Kiểm tra hồ sơ</span>
+                </div>
             </div>
 
             <div class="ws-section-title">II. KẾT QUẢ ĐIỂM</div>
             <div id="ws-score-summary" class="info-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
+            
             <div id="ws-combo-list-container"></div>
 
             <div class="cross-check-box">
@@ -128,7 +133,6 @@
         <div id="modalHeader" class="ws-header" style="font-size: 14px;"></div>
         <div id="modalBody" class="ws-body" style="padding: 20px 15px; font-size: 14px; white-space: pre-line; line-height: 1.5; color: #333;"></div>
         
-        <!-- Khung này chỉ hiện khi dùng hàm showPrompt (yêu cầu nhập liệu) -->
         <div id="modalPromptContainer" style="display:none; padding: 0 15px 15px 15px; background: #fafafa;">
             <input type="text" id="modalPromptInput" style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; outline: none;">
         </div>
@@ -137,7 +141,8 @@
     </div>
 </div>
 
-<script src="data_config.js"></script>
-<script src="app.js"></script>
+<!-- GỌI SCRIPT: Cấu hình chung và Code riêng của Web2 (Tương đối 100%) -->
+<script src="data_config.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
