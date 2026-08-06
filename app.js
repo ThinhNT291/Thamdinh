@@ -419,7 +419,7 @@ function openWorkspace(index) {
     document.getElementById('ws-fullname-title').innerText = fullname;
     document.getElementById('ws-fullname').innerText = fullname;
     
-    document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
+    document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '') || "";
     document.getElementById('ws-masv').innerText = generateMaSV(row);
     
     document.getElementById('ws-hedt').innerText = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
@@ -522,7 +522,9 @@ function handleCrossCheckChange() {
     updateModalActionButtons();
 }
 
-// ĐÃ PHỤC HỒI CHÍNH XÁC LOGIC NÚT BẤM (CÓ HIỆN ĐỦ 3 NÚT)
+// ==========================================
+// LOGIC KHÓA/MỞ 3 NÚT BẤM (CỰC KỲ XỊN XÒ THEO Ý ÔNG)
+// ==========================================
 function updateModalActionButtons() {
     const row = filteredData[currentCandidateIndex];
     const isSurveying = document.getElementById('ws-other-major').value !== "";
@@ -530,21 +532,30 @@ function updateModalActionButtons() {
     const btnM = document.getElementById('btnMissing'); 
     const btnS = document.getElementById('btnSaveToResult');
 
+    // 1. Tắt tất cả nếu đang bật chế độ Khảo sát ngành
     if (isSurveying) {
-        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; return;
+        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; 
+        btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; 
+        return;
     }
 
     let isDuyet = (row._appState === "Đã duyệt");
     let isBaoThieu = (row._appState === "Đã báo thiếu");
+    let missingDocsCount = getMissingDocs(row).length;
 
-    btnA.disabled = isDuyet || isBaoThieu; 
-    btnM.disabled = isDuyet || isBaoThieu; 
+    // 2. Nút Báo Thiếu (⚠️ Y/C BỔ SUNG HS)
+    btnM.disabled = isDuyet; 
+    btnM.innerText = isDuyet ? "⚠️ Không thể báo thiếu" : (isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS");
 
-    btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
-    btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
+    // 3. Nút Duyệt (✅ DUYỆT TRÚNG TUYỂN)
+    btnA.disabled = isDuyet || missingDocsCount > 0;
+    if (isDuyet) btnA.innerText = "✅ Đã gửi Trúng Tuyển";
+    else if (missingDocsCount > 0) btnA.innerText = "❌ Đang thiếu hồ sơ";
+    else btnA.innerText = "✅ DUYỆT TRÚNG TUYỂN";
 
-    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } 
-    else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
+    // 4. Nút Lưu CSDL (💾 LƯU VÀO CSDL)
+    btnS.disabled = row._saved;
+    btnS.innerText = row._saved ? "💾 Đã lưu hồ sơ vào KETQUA" : "💾 LƯU VÀO CSDL";
 }
 
 async function triggerApprove() {
@@ -555,7 +566,7 @@ async function triggerApprove() {
     showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?\n\nHành động này sẽ tạo và gửi tự động Biên nhận PDF Trúng Tuyển.`, async () => {
         let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
         const payload = [{ 
-            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
             hoTen: hoTen, 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
             ngaySinh: getVal(row, ["NGÀNH SINH", "NGÀY SINH"]), 
@@ -582,7 +593,7 @@ async function triggerMissing() {
         let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
         
         const payload = [{ 
-            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
             hoTen: hoTen, 
             nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
             hosoThieu: "Thiếu: " + hosoThieu, 
