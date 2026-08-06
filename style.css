@@ -72,3 +72,8 @@ tr:hover { background: #f1f8f8; }
     .btn-action { width: 100%; min-width: 100%; padding: 12px; font-size: 13px; }
     .filter-group { min-width: 48%; }
 }
+/* NÚT BẤM CHO CUSTOM MODAL */
+.btn-modal-ok { background: #2e7d32; color: #fff; padding: 6px 15px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; font-size: 12px;}
+.btn-modal-ok:hover { background: #1b5e20; }
+.btn-modal-cancel { background: #757575; color: #fff; padding: 6px 15px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; font-size: 12px;}
+.btn-modal-cancel:hover { background: #616161; }
