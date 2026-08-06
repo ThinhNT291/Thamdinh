@@ -31,7 +31,7 @@
             <select id="filter-hoso" onchange="applyFilters()"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
         </div>
         <!-- CHỨC NĂNG SORT MỚI THÊM -->
-        <div class="filter-group"><label>Sắp xếp:</label>
+        <div class="filter-group"><label>Sắp xếp theo:</label>
             <select id="sort-by" onchange="applyFilters()">
                 <option value="default">Mặc định (Theo STT)</option>
                 <option value="date_desc">Ngày nộp (Mới nhất)</option>
@@ -40,7 +40,7 @@
                 <option value="status">Trạng thái thẩm định</option>
             </select>
         </div>
-        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa Lọc</button>
+        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa bộ lọc</button>
     </div>
 
     <div class="action-bar">
@@ -67,7 +67,7 @@
                     <th style="width: 100px; text-align: center;">THẨM ĐỊNH</th>
                 </tr>
             </thead>
-            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang kết nối tới Google Cloud...</td></tr></tbody>
+            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang tải dữ liệu...</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -122,7 +122,7 @@
     const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&t=${new Date().getTime()}`;
     
     // DÁN LINK API "DS DUYỆT TRÚNG TUYỂN" CỦA ÔNG VÀO ĐÂY:
-    const API_DAO_TAO = "VUI_LONG_DAN_LINK_WEBAPP_MOI_VAO_DAY"; 
+    const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
     
     const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
     const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
@@ -361,20 +361,20 @@
     // ===============================================
     async function syncToDaoTao() {
         if (!API_DAO_TAO.includes("script.google.com")) {
-            alert("⚠️ Cảnh báo: Ông chưa dán Link API Đào tạo vào chỗ const API_DAO_TAO trong code kìa!"); return;
+            alert("⚠️ Cảnh báo: Trẻ em lang thang chưa có nhà để về 😂!"); return;
         }
 
         // Chỉ lọc lấy những hồ sơ mang mác "Đã duyệt"
         let approvedRows = rawData.filter(r => r._appState === "Đã duyệt");
         if(approvedRows.length === 0) { 
-            alert("❌ Hệ thống không tìm thấy hồ sơ nào có trạng thái 'Đã duyệt' để bàn giao!"); return; 
+            alert("❌ Không có hồ sơ nào có trạng thái 'Đã duyệt' để bàn giao!"); return; 
         }
 
-        if(!confirm(`Bàn giao danh sách ${approvedRows.length} hồ sơ TRÚNG TUYỂN sang file của Phòng Đào tạo/CTSV?\n(Hệ thống sẽ tự loại bỏ những em trùng lặp đã gửi từ trước)`)) return;
+        if(!confirm(`Bàn giao danh sách mới ${approvedRows.length} hồ sơ TRÚNG TUYỂN sang Phòng Đào tạo/CTSV?\n`)) return;
 
         let btn = document.getElementById('btnSyncDaoTao');
         let oldText = btn.innerText;
-        btn.innerText = "⏳ Đang chuyển giao..."; btn.disabled = true;
+        btn.innerText = "⏳ Processing..."; btn.disabled = true;
 
         let payload = approvedRows.map((row, index) => {
             return {
@@ -397,7 +397,7 @@
             const resp = await fetch(API_DAO_TAO, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") {
-                alert(`🎉 Bàn giao thành công! Có ${result.added} hồ sơ trúng tuyển MỚI đã được chèn vào file của Đào tạo.`);
+                alert(`🎉 Xong! Có ${result.added} hồ sơ trúng tuyển MỚI đã được bàn giao.`);
             } else {
                 alert("❌ Lỗi API máy chủ: " + result.message);
             }
