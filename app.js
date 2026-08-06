@@ -36,6 +36,76 @@ window.onload = () => {
 };
 
 // ==========================================
+// HỆ THỐNG CUSTOM MODAL (THAY THẾ ALERT/CONFIRM/PROMPT)
+// ==========================================
+function closeCustomModal() {
+    document.getElementById('customModal').style.display = 'none';
+    document.getElementById('modalPromptContainer').style.display = 'none';
+}
+
+function showAlert(message, title = "Hệ thống Thẩm định", isWarn = true, onOkCallback = null) {
+    const modal = document.getElementById('customModal');
+    const header = document.getElementById('modalHeader');
+    header.style.background = isWarn ? "#c62828" : "#00897b";
+    header.innerHTML = `<span>${isWarn ? '⚠️' : '💡'} ${title}</span><span style="cursor:pointer;" onclick="closeCustomModal()">✖</span>`;
+    document.getElementById('modalBody').innerHTML = `<b>${message}</b>`;
+    document.getElementById('modalFooter').innerHTML = `<button class="btn-modal-ok" id="btnModalOk">Đồng ý</button>`;
+    
+    modal.style.display = 'flex';
+    document.getElementById('btnModalOk').onclick = () => {
+        closeCustomModal();
+        if (onOkCallback) onOkCallback();
+    };
+}
+
+function showConfirm(message, onYesCallback, title = "Xác nhận thao tác") {
+    const modal = document.getElementById('customModal');
+    const header = document.getElementById('modalHeader');
+    header.style.background = "#0288d1";
+    header.innerHTML = `<span>❓ ${title}</span><span style="cursor:pointer;" onclick="closeCustomModal()">✖</span>`;
+    document.getElementById('modalBody').innerHTML = message;
+    document.getElementById('modalFooter').innerHTML = `
+        <button class="btn-modal-cancel" onclick="closeCustomModal()">Hủy bỏ</button>
+        <button class="btn-modal-ok" id="btnModalYes">Xác nhận</button>
+    `;
+    modal.style.display = 'flex';
+    document.getElementById('btnModalYes').onclick = () => {
+        closeCustomModal();
+        if (onYesCallback) onYesCallback();
+    };
+}
+
+function showPrompt(message, defaultVal, onYesCallback, title = "Yêu cầu nhập liệu") {
+    const modal = document.getElementById('customModal');
+    const header = document.getElementById('modalHeader');
+    header.style.background = "#e65100";
+    header.innerHTML = `<span>📝 ${title}</span><span style="cursor:pointer;" onclick="closeCustomModal()">✖</span>`;
+    document.getElementById('modalBody').innerHTML = message;
+    
+    const promptContainer = document.getElementById('modalPromptContainer');
+    promptContainer.style.display = 'block';
+    const promptInput = document.getElementById('modalPromptInput');
+    promptInput.value = defaultVal;
+    
+    document.getElementById('modalFooter').innerHTML = `
+        <button class="btn-modal-cancel" onclick="closeCustomModal()">Hủy bỏ</button>
+        <button class="btn-modal-ok" id="btnPromptOk">Xác nhận</button>
+    `;
+    modal.style.display = 'flex';
+    promptInput.focus();
+
+    document.getElementById('btnPromptOk').onclick = () => {
+        const val = promptInput.value.trim();
+        if (!val) {
+            promptInput.style.borderColor = "red";
+            return;
+        }
+        closeCustomModal();
+        if (onYesCallback) onYesCallback(val);
+    };
+}
+
+// ==========================================
 // ĐỌC VÀ LỌC DỮ LIỆU TỪ GOOGLE SHEET
 // ==========================================
 function fetchCSVData() {
@@ -163,9 +233,15 @@ function getRawDateNumber(row) {
 }
 
 function populateFilters() {
-    const nganhSet = new Set(); 
-    rawData.forEach(r => { const ng = getVal(r, ["NGÀNH", "NGÀNH ĐÀO TẠO"]); if(ng) nganhSet.add(ng); });
+    const nganhSet = new Set(); const doituongSet = new Set();
+    rawData.forEach(r => { 
+        const ng = getVal(r, ["NGÀNH", "NGÀNH ĐÀO TẠO"]); if(ng) nganhSet.add(ng); 
+        const dt = getVal(r, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]); if(dt) doituongSet.add(dt);
+    });
+    
     const selectNganh = document.getElementById('filter-nganh'); nganhSet.forEach(ng => selectNganh.appendChild(new Option(ng, ng)));
+    const selectDoiTuong = document.getElementById('filter-doituong'); 
+    if(selectDoiTuong) doituongSet.forEach(dt => selectDoiTuong.appendChild(new Option(dt, dt)));
 }
 
 function applyFilters() {
@@ -175,6 +251,7 @@ function applyFilters() {
     const tDate = toVal ? new Date(toVal) : null; if(tDate) tDate.setHours(23,59,59,999);
     
     const nVal = document.getElementById('filter-nganh').value;
+    const dVal = document.getElementById('filter-doituong') ? document.getElementById('filter-doituong').value : "";
     const hVal = document.getElementById('filter-hoso').value.toLowerCase();
     const sortVal = document.getElementById('sort-by').value;
 
@@ -186,6 +263,8 @@ function applyFilters() {
             if (tDate && rowDateMs > tDate.getTime()) return false; 
         }
         if (nVal && getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]) !== nVal) return false;
+        if (dVal && getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]) !== dVal) return false;
+        
         let missingCount = getMissingDocs(row).length;
         if (hVal === "đủ" && missingCount > 0) return false;
         if (hVal === "thiếu" && missingCount === 0) return false;
@@ -222,11 +301,13 @@ function renderTable() {
         let missing = getMissingDocs(row);
         let badge = missing.length > 0 ? `<span class="badge badge-warning" style="white-space:normal;text-align:left;">Thiếu: ${missing.join(', ')}</span>` : `<span class="badge badge-success">Đủ hồ sơ</span>`;
 
+        let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
+
         tr.innerHTML = `
             <td style="text-align: center;">${index + 1}</td>
             <td style="text-align: center;"><b>${getVal(row, ["TIME"]).split(' ')[0]}</b></td>
             <td style="color:#d84315; font-weight:bold;">${generateMaSV(row)}</td>
-            <td><b>${getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"])}</b></td>
+            <td><b>${cccdStr}</b></td>
             <td><b>${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])}</b></td>
             <td>${getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])}</td>
             <td>${getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"])}</td>
@@ -242,133 +323,140 @@ function renderTable() {
 // CÁC CHỨC NĂNG NÚT BẤM VÀ XUẤT DATA
 // ==========================================
 
-// 1. TÍNH NĂNG XUẤT EXCEL (Đã thêm Mã SV và Sửa lỗi)
 function exportExcel() {
-    if (filteredData.length === 0) { alert("Không có dữ liệu để xuất!"); return; }
-    if (typeof XLSX === 'undefined') { alert("Thư viện Excel chưa được tải, vui lòng kiểm tra lại mạng!"); return; }
+    if (filteredData.length === 0) { showAlert("Không có dữ liệu trên bảng để xuất Excel!", "LỖI TRỐNG DỮ LIỆU", true); return; }
+    if (typeof XLSX === 'undefined') { showAlert("Thư viện Excel chưa được tải, vui lòng tải lại trang!", "LỖI KẾT NỐI", true); return; }
 
     let exportData = filteredData.map((row, index) => {
+        let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
+        let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
+        let missing = getMissingDocs(row);
+        let hsStatus = missing.length > 0 ? "Thiếu hồ sơ: " + missing.join(', ') : "Đủ hồ sơ hợp lệ";
+        let rawScoreText = getBestScoreText(row).replace(/<[^>]+>/g, '');
+
         return {
-            "STT": index + 1,
-            "MÃ SINH VIÊN": generateMaSV(row),
-            "CĂN CƯỚC": getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]),
+            "STT": getVal(row, ["STT"]) || (index + 1), 
+            "NGÀY NỘP": getVal(row, ["TIME"]).split(' ')[0],
+            "MÃ SINH VIÊN": generateMaSV(row), 
+            "CĂN CƯỚC": cccdStr,
             "HỌ VÀ TÊN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
-            "NGÀY SINH": getVal(row, ["NGÀY SINH"]),
-            "NGÀNH ĐÀO TẠO": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+            "NGÀNH ĐÀO TẠO": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
             "ĐỐI TƯỢNG ĐẦU VÀO": getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]),
-            "TRẠNG THÁI HỒ SƠ": getMissingDocs(row).length > 0 ? "Thiếu hồ sơ" : "Đủ hồ sơ",
-            "ĐIỂM TRÚNG TUYỂN": getRawScoreNumber(row),
-            "TRẠNG THÁI THẨM ĐỊNH": row._appState
+            "ĐIỂM/ TỔ HỢP": rawScoreText,
+            "HỒ SƠ": hsStatus, 
+            "TRẠNG THÁI THẨM ĐỊNH": row._appState || "Đang chờ duyệt",
+            "LINK HỒ SƠ": cleanLink
         };
     });
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach");
-    XLSX.writeFile(wb, `Danh_Sach_Tham_Dinh_${new Date().getTime()}.xlsx`);
-}
-
-// 2. TÍNH NĂNG ĐẨY ĐÀO TẠO (Đã thêm Mã SV)
-async function syncToDaoTao() {
-    if (!API_DAO_TAO.includes("script.google.com")) { alert("⚠️ Ông chưa dán Link API Đào tạo vào code!"); return; }
-    let approvedRows = rawData.filter(r => r._appState === "Đã duyệt");
-    if(approvedRows.length === 0) { alert("❌ Không tìm thấy hồ sơ nào có trạng thái 'Đã duyệt'!"); return; }
-    if(!confirm(`Bàn giao danh sách ${approvedRows.length} hồ sơ TRÚNG TUYỂN sang file của Phòng Đào tạo/CTSV?`)) return;
-
-    let btn = document.getElementById('btnSyncDaoTao'); let oldText = btn.innerText;
-    btn.innerText = "⏳ Đang chuyển giao..."; btn.disabled = true;
-
-    let payload = approvedRows.map((row, index) => {
-        return {
-            "TT": index + 1,
-            "MÃ SINH VIÊN": generateMaSV(row), 
-            "CĂN CƯỚC": getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]),
-            "TÊN SINH VIÊN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
-            "NGÀY SINH": getVal(row, ["NGÀY SINH"]),
-            "NGÀNH": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
-            "KHÓA": getVal(row, ["KHÓA"]),
-            "NĂM XÉT TUYỂN": getVal(row, ["NĂM XÉT TUYỂN"]),
-            "HỆ ĐÀO TẠO": getVal(row, ["HỆ ĐÀO TẠO"]),
-            "HÌNH THỨC ĐÀO TẠO": getVal(row, ["HÌNH THỨC ĐÀO TẠO"]),
-            "GIẤY TỜ ƯU TIÊN": getVal(row, ["GIẤY TỜ ƯU TIÊN"]),
-            "ĐIỂM TRÚNG TUYỂN": getRawScoreNumber(row),
-            "LINK HỒ SƠ": getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"])
-        }
+    let nowStr = new Date().toLocaleString('vi-VN');
+    exportData.push({
+        "STT": `Dữ liệu cập nhật đến ngày ${nowStr}`,
+        "NGÀY NỘP": "", "MÃ SINH VIÊN": "", "CĂN CƯỚC": "", "HỌ VÀ TÊN": "", 
+        "NGÀNH ĐÀO TẠO": "", "ĐỐI TƯỢNG ĐẦU VÀO": "", "ĐIỂM/ TỔ HỢP": "", 
+        "HỒ SƠ": "", "TRẠNG THÁI THẨM ĐỊNH": "", "LINK HỒ SƠ": ""
     });
 
-    try {
-        const resp = await fetch(API_DAO_TAO, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        const result = await resp.json();
-        if(result.status === "success") alert(`🎉 Bàn giao thành công ${result.added} hồ sơ MỚI!`);
-        else alert("❌ Lỗi API máy chủ: " + result.message);
-    } catch (e) { alert("❌ Lỗi kết nối mạng: " + e); }
-    btn.innerText = oldText; btn.disabled = false;
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    if(!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({ s: {r: exportData.length, c: 0}, e: {r: exportData.length, c: 10} });
+    worksheet['!cols'] = [{wch: 6}, {wch: 12}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 26}, {wch: 26}, {wch: 15}, {wch: 18}, {wch: 20}, {wch: 35}];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, worksheet, "DanhSachThamDinh");
+    XLSX.writeFile(wb, `Danh_Sach_Loc_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+async function syncToDaoTao() {
+    if (!API_DAO_TAO.includes("script.google.com")) { showAlert("Ông chưa dán Link API Đào tạo vào code!", "CẢNH BÁO", true); return; }
+    let approvedRows = rawData.filter(r => r._appState === "Đã duyệt");
+    if(approvedRows.length === 0) { showAlert("Hệ thống không tìm thấy hồ sơ nào có trạng thái 'Đã duyệt' để bàn giao!", "KHÔNG CÓ DỮ LIỆU", true); return; }
+    
+    showConfirm(`Bạn chuẩn bị bàn giao danh sách <b>${approvedRows.length} hồ sơ TRÚNG TUYỂN</b> sang file của Phòng Đào tạo/CTSV.\n\nHệ thống sẽ tự động lọc những em đã gửi trước đó để không bị trùng lặp.\nTiếp tục?`, async () => {
+        let btn = document.getElementById('btnSyncDaoTao'); let oldText = btn.innerText;
+        btn.innerText = "⏳ Processing..."; btn.disabled = true;
+
+        let payload = approvedRows.map((row, index) => {
+            return {
+                "TT": index + 1,
+                "MÃ SINH VIÊN": generateMaSV(row), 
+                "CĂN CƯỚC": getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]),
+                "TÊN SINH VIÊN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
+                "NGÀY SINH": getVal(row, ["NGÀY SINH"]),
+                "NGÀNH": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+                "KHÓA": getVal(row, ["KHÓA"]),
+                "NĂM XÉT TUYỂN": getVal(row, ["NĂM XÉT TUYỂN"]),
+                "HỆ ĐÀO TẠO": getVal(row, ["HỆ ĐÀO TẠO"]),
+                "HÌNH THỨC ĐÀO TẠO": getVal(row, ["HÌNH THỨC ĐÀO TẠO"]),
+                "GIẤY TỜ ƯU TIÊN": getVal(row, ["GIẤY TỜ ƯU TIÊN"]),
+                "ĐIỂM TRÚNG TUYỂN": getRawScoreNumber(row),
+                "LINK HỒ SƠ": getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"])
+            }
+        });
+
+        try {
+            const resp = await fetch(API_DAO_TAO, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const result = await resp.json();
+            if(result.status === "success") showAlert(`Bàn giao thành công! Có ${result.added} hồ sơ MỚI đã được chèn vào.`, "🎉 THÀNH CÔNG", false);
+            else showAlert("Lỗi API máy chủ: \n" + result.message, "❌ LỖI", true);
+        } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); }
+        btn.innerText = oldText; btn.disabled = false;
+    }, "XÁC NHẬN BÀN GIAO");
 }
 
 // ==========================================
-// WORKSPACE: KHUNG DUYỆT HỒ SƠ CHI TIẾT
+// WORKSPACE: KHUNG DUYỆT HỒ SƠ CHI TIẾT (ĐÃ PHỤC HỒI 100%)
 // ==========================================
 function openWorkspace(index) {
-    currentCandidateIndex = index; let row = filteredData[index];
-    document.getElementById('ws-fullname-title').innerText = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]).toUpperCase();
-    document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]);
-    document.getElementById('ws-fullname').innerText = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    document.getElementById('ws-masv').innerText = generateMaSV(row);
-    document.getElementById('ws-hedt').innerText = getVal(row, ["HỆ ĐÀO TẠO"]);
-    document.getElementById('ws-hinhthuc').innerText = getVal(row, ["HÌNH THỨC ĐÀO TẠO"]);
-    document.getElementById('ws-nganh').innerText = getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]);
+    currentCandidateIndex = index;
+    const row = filteredData[index];
+    document.getElementById('ws-other-major').value = ""; 
     
-    let kv = getVal(row, ["KHU VỰC ƯU TIÊN"]); let dt = getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"]);
-    document.getElementById('ws-kvdt').innerText = (kv ? kv : 'Không KV') + ' / ' + (dt ? dt : 'Không ĐT');
-
-    let missing = getMissingDocs(row);
-    let stEl = document.getElementById('ws-hoso-status');
-    if (missing.length > 0) { stEl.innerHTML = `<span style="color:#d32f2f;">❌ Thiếu: ${missing.join(', ')}</span>`; } 
-    else { stEl.innerHTML = `<span style="color:#2e7d32;">✅ Đủ hồ sơ</span>`; }
+    document.getElementById('btnPrevWS').disabled = (index === 0);
+    document.getElementById('btnNextWS').disabled = (index === filteredData.length - 1);
+    
+    const fullname = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
+    document.getElementById('ws-fullname-title').innerText = fullname;
+    document.getElementById('ws-fullname').innerText = fullname;
+    
+    document.getElementById('ws-cccd').innerText = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]) || "";
+    document.getElementById('ws-masv').innerText = generateMaSV(row);
+    
+    document.getElementById('ws-hedt').innerText = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
+    document.getElementById('ws-hinhthuc').innerText = getVal(row, ["HÌNH THỨC ĐÀO TẠO", "Hình thức đào tạo"]);
+    document.getElementById('ws-kvdt').innerText = `${getVal(row, ["KHU VỰC ƯU TIÊN"])} / ${getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"])}`;
 
     calculateAndRenderScores(row, getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]));
-    document.getElementById('ws-other-major').value = ""; updateModalActionButtons();
+    updateModalActionButtons();
     document.getElementById('workspaceModal').style.display = 'flex';
 }
 
 function closeWorkspace() { document.getElementById('workspaceModal').style.display = 'none'; }
-function openDriveLink() { let link = getVal(filteredData[currentCandidateIndex], ["LINK HỒ SƠ"]); if(link) { if(!link.startsWith('http')) link = 'https://' + link; window.open(link, '_blank'); } else alert("Thí sinh này không có link thư mục đính kèm!"); }
+
+function openDriveLink() { 
+    let link = getVal(filteredData[currentCandidateIndex], ["LINK HỒ SƠ", "Link hồ sơ"]); 
+    if(link && link.includes("http")) { window.open(link, '_blank'); } 
+    else { showAlert("Hồ sơ này không có đường link đính kèm hợp lệ.", "❌ KHÔNG TÌM THẤY LINK", true); } 
+}
+
 function prevWorkspace() { if (currentCandidateIndex > 0) openWorkspace(currentCandidateIndex - 1); }
 function nextWorkspace() { if (currentCandidateIndex < filteredData.length - 1) openWorkspace(currentCandidateIndex + 1); }
 
-function updateModalActionButtons() {
-    let row = filteredData[currentCandidateIndex];
-    document.getElementById('btnPrevWS').disabled = (currentCandidateIndex === 0);
-    document.getElementById('btnNextWS').disabled = (currentCandidateIndex === filteredData.length - 1);
-    
-    let isApproved = row._appState === "Đã duyệt";
-    document.getElementById('btnApprove').style.display = isApproved ? 'none' : 'block';
-    document.getElementById('btnMissing').style.display = isApproved ? 'none' : 'block';
-    document.getElementById('btnSaveToResult').style.display = isApproved ? 'block' : 'none';
-}
-
-function handleCrossCheckChange() {
-    let altMajor = document.getElementById('ws-other-major').value; let row = filteredData[currentCandidateIndex];
-    let majorToCalculate = altMajor ? altMajor : getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]);
-    calculateAndRenderScores(row, majorToCalculate);
-}
-
+// CHÍNH LÀ ĐOẠN NÀY ĐÃ ĐƯỢC PHỤC HỒI 100% GIAO DIỆN BẢNG ĐIỂM CỦA ÔNG
 function calculateAndRenderScores(row, targetNganh) {
     const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
-    const summaryEl = document.getElementById('ws-score-summary');
-    const comboEl = document.getElementById('ws-combo-list-container');
-    summaryEl.innerHTML = ''; comboEl.innerHTML = '';
+    document.getElementById('ws-nganh').innerText = targetNganh;
+    document.getElementById('ws-nganh').style.color = (targetNganh !== getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])) ? "#e65100" : "#111";
 
+    let summaryHTML = ""; let comboHTML = "";
+    
     if (dtDauVao === "Tốt nghiệp THPT") {
         const diemCong = parseFloat(getVal(row, ["ĐIỂM CỘNG"]).replace(',','.')) || 0;
         const kvVal = getVal(row, ["KHU VỰC ƯU TIÊN"]); const dtVal = getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"]);
         let uTienBanDau = (DICT_KHU_VUC[kvVal] || 0) + (DICT_DOI_TUONG[dtVal] || 0);
         
         let combos = DICT_NGANH[targetNganh] || [];
-        let htmlTable = '<table class="combo-table"><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr>';
-        
-        let maxScore = 0; let bestCombo = "";
-        let validCombos = [];
+        let comboResults = []; let maxScore = 0; let bestCombo = ""; let finalTotalScore = 0; let finalUTien = 0;
 
         combos.forEach(maToHop => {
             let subjects = DICT_TO_HOP[maToHop];
@@ -376,104 +464,179 @@ function calculateAndRenderScores(row, targetNganh) {
                 let s1 = parseFloat(getVal(row, [SUBJ_MAP[subjects[0]]]).replace(',','.')) || 0;
                 let s2 = parseFloat(getVal(row, [SUBJ_MAP[subjects[1]]]).replace(',','.')) || 0;
                 let s3 = parseFloat(getVal(row, [SUBJ_MAP[subjects[2]]]).replace(',','.')) || 0;
-                if(s1 > 0 && s2 > 0 && s3 > 0) {
-                    let total = s1 + s2 + s3;
-                    validCombos.push({ ma: maToHop, s1: s1, s2: s2, s3: s3, t: total, n1: subjects[0], n2: subjects[1], n3: subjects[2] });
-                    if (total > maxScore) { maxScore = total; bestCombo = maToHop; }
-                }
+                let total = s1 + s2 + s3;
+                comboResults.push({ combo: maToHop, s1, s2, s3, total });
+                if (s1 > 0 && s2 > 0 && s3 > 0 && total > maxScore) { maxScore = total; bestCombo = maToHop; }
             }
         });
 
-        validCombos.forEach(c => {
-            let cls = (c.ma === bestCombo) ? 'class="best-combo"' : '';
-            htmlTable += `<tr ${cls}><td>${c.ma}</td><td>${c.s1} (${c.n1})</td><td>${c.s2} (${c.n2})</td><td>${c.s3} (${c.n3})</td><td>${c.t}</td></tr>`;
-        });
-        htmlTable += '</table>';
-        
-        if (validCombos.length === 0) { comboEl.innerHTML = '<p style="color:#e65100; text-align:center; font-size:12px;">Thí sinh chưa nhập đủ điểm các môn thuộc tổ hợp của ngành này.</p>'; } 
-        else { comboEl.innerHTML = htmlTable; }
+        if (maxScore > 0) {
+            finalUTien = maxScore >= 22.5 ? ((30 - maxScore) / 7.5) * uTienBanDau : uTienBanDau;
+            finalTotalScore = (maxScore + finalUTien + diemCong).toFixed(2);
+            let status = finalTotalScore >= 15.0 ? "<span style='color:#2e7d32;font-weight:bold'>ĐẠT</span>" : "<span style='color:#c62828;font-weight:bold'>TRƯỢT</span>";
+            
+            summaryHTML = `
+                <div class="info-card"><span class="info-label">Điểm cộng/ Điểm ưu tiên</span><span class="info-val">${diemCong}đ / ${finalUTien.toFixed(2)}đ</span></div>
+                <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">ĐIỂM TRÚNG TUYỂN / TỔ HỢP</span><span class="info-val" style="font-size:15px; color:#2e7d32;">${finalTotalScore} <span style="font-size:12px;color:#555">(${bestCombo})</span></span></div>
+                <div class="info-card"><span class="info-label">Điểm Chuẩn (15 Đ)</span><span class="info-val">${status}</span></div>
+            `;
+        } else { 
+            summaryHTML = `<div class="info-card" style="grid-column: span 3;"><i>Chưa đủ dữ liệu điểm để xét tổ hợp môn.</i></div>`; 
+        }
 
-        let finalUTien = maxScore >= 22.5 ? ((30 - maxScore) / 7.5) * uTienBanDau : uTienBanDau;
-        let finalScore = (maxScore + finalUTien + diemCong).toFixed(2);
-        
-        summaryEl.innerHTML = `
-            <div class="info-card"><span class="info-label">Điểm cộng thêm</span><span class="info-val">${diemCong}đ (Giải thưởng/CC Ngoại ngữ)</span></div>
-            <div class="info-card"><span class="info-label">Điểm Ưu tiên</span><span class="info-val">${finalUTien.toFixed(2)}đ (KV: ${kvVal} - ĐT: ${dtVal})</span></div>
-            <div class="info-card" style="background:#e8f5e9;"><span class="info-label">TỔNG ĐIỂM XÉT TUYỂN</span><span class="info-val highlight">${finalScore}</span></div>
-        `;
+        if (comboResults.length > 0) {
+            comboHTML = `<div style="display:flex; justify-content:center; width:100%;"><table class="combo-table" style="width: max-content !important; min-width: unset; margin: 0 auto;"><thead><tr><th>Tổ hợp</th><th>Môn 1</th><th>Môn 2</th><th>Môn 3</th><th>Tổng điểm</th></tr></thead><tbody>`;
+            comboResults.forEach(c => {
+                let isBest = (c.combo === bestCombo);
+                comboHTML += `<tr class="${isBest ? 'best-combo' : ''}">
+                    <td>${c.combo} ${isBest ? '⭐' : ''}</td><td>${c.s1}</td><td>${c.s2}</td><td>${c.s3}</td>
+                    <td style="${isBest ? 'color:#d84315; font-weight:bold;' : ''}">${c.total.toFixed(2)}</td></tr>`;
+            });
+            comboHTML += `</tbody></table></div>`;
+        }
+
     } else {
         let h4 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 4"]); let h10 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 10"]);
-        summaryEl.innerHTML = `
-            <div class="info-card"><span class="info-label">Trung bình hệ 4</span><span class="info-val">${h4 || 'Không nhập'}</span></div>
-            <div class="info-card"><span class="info-label">Trung bình hệ 10</span><span class="info-val">${h10 || 'Không nhập'}</span></div>
-            <div class="info-card" style="background:#e8f5e9;"><span class="info-label">ĐÁNH GIÁ CHUNG</span><span class="info-val highlight">Dùng điểm VB/CQ</span></div>
+        let diemChuanText = "-";
+        if (h4) { diemChuanText = "02"; } else if (h10) { diemChuanText = "05"; }
+
+        summaryHTML = `
+            <div class="info-card"><span class="info-label">ĐTB Hệ 4</span><span class="info-val">${h4 || '-'}</span></div>
+            <div class="info-card"><span class="info-label">ĐTB Hệ 10</span><span class="info-val">${h10 || '-'}</span></div>
+            <div class="info-card"><span class="info-label">Điểm Chuẩn</span><span class="info-val"><span style="color:#2e7d32;font-weight:bold">${diemChuanText}</span></span></div>
         `;
     }
+    document.getElementById('ws-score-summary').innerHTML = summaryHTML;
+    document.getElementById('ws-combo-list-container').innerHTML = comboHTML;
+
+    let missing = getMissingDocs(row);
+    let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ hợp lệ</span>`;
+    document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
 }
 
-// 3. TÍNH NĂNG BÁO THIẾU
-async function triggerMissing() {
-    let row = filteredData[currentCandidateIndex]; let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    let missingArray = getMissingDocs(row); let defaultMissingText = missingArray.length > 0 ? missingArray.join(', ') : "";
-
-    const hosoThieu = prompt(`Nhập tên hồ sơ thiếu cho ${hoTen}:`, defaultMissingText);
-    if(!hosoThieu) return;
-    
-    let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
-    const payload = [{ soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), hoTen: hoTen, nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), hosoThieu: "Thiếu: " + hosoThieu, ngayCapNhat: new Date().toLocaleDateString('vi-VN') }];
-
-    try {
-        const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        const result = await resp.json();
-        if(result.status === "success") { alert(`✅ Đã gửi yêu cầu bổ sung hồ sơ ${hoTen}.`); row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons(); } 
-        else { alert("Lỗi: " + result.message); }
-    } catch (e) { alert("Lỗi: " + e); }
-    btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS";
+function handleCrossCheckChange() {
+    const val = document.getElementById('ws-other-major').value;
+    const row = filteredData[currentCandidateIndex];
+    const targetNganh = val === "" ? getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]) : val;
+    calculateAndRenderScores(row, targetNganh);
+    updateModalActionButtons();
 }
 
-// 4. TÍNH NĂNG DUYỆT TRÚNG TUYỂN
+// ĐÃ PHỤC HỒI CHÍNH XÁC LOGIC NÚT BẤM (CÓ HIỆN ĐỦ 3 NÚT)
+function updateModalActionButtons() {
+    const row = filteredData[currentCandidateIndex];
+    const isSurveying = document.getElementById('ws-other-major').value !== "";
+    const btnA = document.getElementById('btnApprove'); 
+    const btnM = document.getElementById('btnMissing'); 
+    const btnS = document.getElementById('btnSaveToResult');
+
+    if (isSurveying) {
+        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true; btnS.innerText = "🔒 Tắt Khảo sát để Thao tác"; return;
+    }
+
+    let isDuyet = (row._appState === "Đã duyệt");
+    let isBaoThieu = (row._appState === "Đã báo thiếu");
+
+    btnA.disabled = isDuyet || isBaoThieu; 
+    btnM.disabled = isDuyet || isBaoThieu; 
+
+    btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
+    btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
+
+    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào KETQUA"; } 
+    else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
+}
+
 async function triggerApprove() {
     let row = filteredData[currentCandidateIndex];
-    if (getMissingDocs(row).length > 0) { alert("⚠️ Không thể duyệt trúng tuyển vì thí sinh vẫn CÒN THIẾU HỒ SƠ!"); return; }
+    if (getMissingDocs(row).length > 0) { showAlert("Không thể duyệt Trúng tuyển vì thí sinh vẫn CÒN THIẾU HỒ SƠ hợp lệ!", "⚠️ LỖI DUYỆT HỒ SƠ", true); return; }
     
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    if(!confirm(`Xác nhận Duyệt Trúng Tuyển cho thí sinh: ${hoTen}?`)) return;
+    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?\n\nHành động này sẽ tạo và gửi tự động Biên nhận PDF Trúng Tuyển.`, async () => {
+        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
+        const payload = [{ 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
+            hoTen: hoTen, 
+            nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), 
+            ngaySinh: getVal(row, ["NGÀNH SINH", "NGÀY SINH"]), 
+            ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
+        }];
 
-    let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
-    const payload = [{ soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), hoTen: hoTen, nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]), ngaySinh: getVal(row, ["NGÀNH SINH", "NGÀY SINH"]), ngayCapNhat: new Date().toLocaleDateString('vi-VN') }];
-
-    try {
-        const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        const result = await resp.json();
-        if(result.status === "success") { alert(`✅ Đã Duyệt Trúng tuyển thành công!`); row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons(); window.open(result.pdfUrl, '_blank'); } 
-        else { alert("Lỗi hệ thống: " + result.message); }
-    } catch (e) { alert("Lỗi mạng: " + e); }
-    btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN";
+        try {
+            const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const result = await resp.json();
+            if(result.status === "success") { 
+                showAlert(`Hệ thống đã Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
+                row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons(); window.open(result.pdfUrl, '_blank'); 
+            } else { showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); }
+        } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); }
+        btn.disabled = false; btn.innerText = "✅ DUYỆT TRÚNG TUYỂN";
+    }, "XÁC NHẬN TRÚNG TUYỂN");
 }
 
-// 5. TÍNH NĂNG LƯU VÀO CSDL KETQUA (Đã thêm Mã SV)
+async function triggerMissing() {
+    let row = filteredData[currentCandidateIndex]; let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
+    let missingArray = getMissingDocs(row); let defaultMissingText = missingArray.length > 0 ? missingArray.join(', ') : "Bản sao Học bạ THPT";
+
+    showPrompt(`Hệ thống phát hiện [${hoTen}] chưa nộp đủ hồ sơ. Vui lòng rà soát lại trên link Drive và nhập tên hồ sơ yêu cầu bổ sung:`, defaultMissingText, async (hosoThieu) => {
+        let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+        
+        const payload = [{ 
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]), 
+            hoTen: hoTen, 
+            nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+            hosoThieu: "Thiếu: " + hosoThieu, 
+            ngayCapNhat: new Date().toLocaleDateString('vi-VN') 
+        }];
+
+        try {
+            const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const result = await resp.json();
+            if(result.status === "success") { 
+                showAlert(`Đã gửi thông báo yêu cầu bổ sung [${hosoThieu}] cho thí sinh ${hoTen}.`, "✅ THÀNH CÔNG", false); 
+                row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons(); 
+            } else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); }
+        } catch (e) { showAlert("Lỗi: " + e, "❌ LỖI", true); }
+        btn.disabled = false; btn.innerText = "⚠️ Y/C BỔ SUNG HS";
+    }, "YÊU CẦU BỔ SUNG HỒ SƠ");
+}
+
 async function triggerSaveToSheet() {
     let row = filteredData[currentCandidateIndex];
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    if(!confirm(`Lưu hồ sơ của [${hoTen}] vào Cơ sở dữ liệu Backup (Sheet KETQUA)?`)) return;
+    
+    showConfirm(`Hành động này sẽ ghi chốt dữ liệu hồ sơ của <b>${hoTen}</b> vào Sheet Backup KETQUA (Cơ sở dữ liệu lưu trữ).\n\nBạn có muốn tiếp tục?`, async () => {
+        let btn = document.getElementById('btnSaveToResult'); let oldText = btn.innerText;
+        btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
-    let btn = document.getElementById('btnSaveToResult'); let oldText = btn.innerText;
-    btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
+        let payloadData = { ...row };
+        payloadData["MÃ SINH VIÊN"] = generateMaSV(row); 
+        payloadData["ĐIỂM TRÚNG TUYỂN"] = getRawScoreNumber(row);
+        payloadData["KẾT QUẢ ĐIỂM"] = "Trúng tuyển";
 
-    // Gói riêng Mã Sinh Viên để đẩy đi
-    let payloadData = { ...row };
-    payloadData["MÃ SINH VIÊN"] = generateMaSV(row); 
-    payloadData["ĐIỂM TRÚNG TUYỂN"] = getRawScoreNumber(row);
-
-    try {
-        const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
-        const result = await resp.json();
-        if(result.status === "success") alert(result.skipped > 0 ? `⚠️ Hồ sơ này đã tồn tại trong CSDL!` : `✅ Lưu CSDL thành công!`);
-        else alert("Lỗi: " + result.message);
-    } catch (e) { alert("Lỗi kết nối mạng: " + e); }
-    btn.innerText = oldText; btn.disabled = false;
+        try {
+            const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
+            const result = await resp.json();
+            if(result.status === "success") {
+                if (result.skipped > 0) showAlert(`Hồ sơ này đã được lưu từ trước trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
+                else {
+                    showAlert(`Đã lưu thành công vào CSDL dự phòng!`, "✅ LƯU THÀNH CÔNG", false);
+                    row._saved = true; updateModalActionButtons();
+                }
+            }
+            else showAlert("Lỗi: " + result.message, "❌ LỖI", true);
+        } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); }
+        btn.innerText = oldText; btn.disabled = false;
+    }, "LƯU VÀO CSDL");
 }
 
+// KHÓA SỰ KIỆN NÚT ESC
 window.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") { const wsModal = document.getElementById('workspaceModal'); if (wsModal && wsModal.style.display === 'flex') closeWorkspace(); }
+    if (event.key === "Escape") { 
+        const customModal = document.getElementById('customModal');
+        if (customModal && customModal.style.display === 'flex') { closeCustomModal(); return; }
+        
+        const wsModal = document.getElementById('workspaceModal'); 
+        if (wsModal && wsModal.style.display === 'flex') closeWorkspace(); 
+    }
 });
