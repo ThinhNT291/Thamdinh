@@ -605,8 +605,15 @@ async function triggerApprove() {
     }
     
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?.`, async () => {
-        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
+    showConfirm(`<b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?.`, async () => {
+        let btnA = document.getElementById('btnApprove'); 
+        let btnM = document.getElementById('btnMissing'); 
+        let btnS = document.getElementById('btnSaveToResult');
+        
+        // 🔒 KHÓA TOÀN BỘ 3 NÚT TRONG LÚC XỬ LÝ
+        btnA.innerText = "⏳ Đang xuất Biên nhận..."; 
+        btnA.disabled = true; btnM.disabled = true; btnS.disabled = true;
+        
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
             hoTen: hoTen, 
@@ -621,19 +628,29 @@ async function triggerApprove() {
             if(result.status === "success") { 
                 showAlert(`Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
                 row._appState = "Đã duyệt"; renderTable(); updateModalActionButtons(); window.open(result.pdfUrl, '_blank'); 
-            } else { showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
-        } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
+            } else { 
+                showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true); 
+                updateModalActionButtons(); // 🔓 Mở khóa và khôi phục trạng thái nếu lỗi
+            }
+        } catch (e) { 
+            showAlert("Lỗi mạng: " + e, "❌ LỖI", true); 
+            updateModalActionButtons(); // 🔓 Mở khóa và khôi phục trạng thái nếu rớt mạng
+        }
     }, "XÁC NHẬN TRÚNG TUYỂN");
 }
-
-
 
 async function triggerMissing() {
     let row = filteredData[currentCandidateIndex]; let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
     let missingArray = getMissingDocs(row); let defaultMissingText = missingArray.length > 0 ? missingArray.join(', ') : "Bản sao Học bạ THPT";
 
-    showPrompt(`Hệ thống phát hiện [${hoTen}] chưa nộp đủ hồ sơ. Vui lòng rà soát lại trên link Drive và nhập tên hồ sơ yêu cầu bổ sung:`, defaultMissingText, async (hosoThieu) => {
-        let btn = document.getElementById('btnMissing'); btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
+    showPrompt(`Thí sinh [${hoTen}] chưa nộp đủ hồ sơ. Kiểm tra lại thư mục hồ sơ và nhập tên hồ sơ yêu cầu bổ sung:`, defaultMissingText, async (hosoThieu) => {
+        let btnA = document.getElementById('btnApprove'); 
+        let btnM = document.getElementById('btnMissing'); 
+        let btnS = document.getElementById('btnSaveToResult');
+        
+        // 🔒 KHÓA TOÀN BỘ 3 NÚT TRONG LÚC XỬ LÝ
+        btnM.innerText = "⏳ Đang xử lý..."; 
+        btnM.disabled = true; btnA.disabled = true; btnS.disabled = true;
         
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
@@ -647,10 +664,16 @@ async function triggerMissing() {
             const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
-                showAlert(`Đã gửi thông báo yêu cầu bổ sung [${hosoThieu}] cho thí sinh ${hoTen}.`, "✅ THÀNH CÔNG", false); 
+                showAlert(`Đã gửi yêu cầu bổ sung [${hosoThieu}] cho thí sinh ${hoTen}.`, "✅ THÀNH CÔNG", false); 
                 row._appState = "Đã báo thiếu"; renderTable(); updateModalActionButtons(); 
-            } else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
-        } catch (e) { showAlert("Lỗi: " + e, "❌ LỖI", true); btn.innerText = "⚠️ Y/C BỔ SUNG HS"; }
+            } else { 
+                showAlert("Lỗi: " + result.message, "❌ LỖI", true); 
+                updateModalActionButtons(); // 🔓
+            }
+        } catch (e) { 
+            showAlert("Lỗi: " + e, "❌ LỖI", true); 
+            updateModalActionButtons(); // 🔓
+        }
     }, "YÊU CẦU BỔ SUNG HỒ SƠ");
 }
 
@@ -659,15 +682,18 @@ async function triggerSaveToSheet() {
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
     
     showConfirm(`Lưu hồ sơ <b>${hoTen}</b> vào CSDL.\n\nTiếp tục?`, async () => {
-        let btn = document.getElementById('btnSaveToResult'); let oldText = btn.innerText;
-        btn.innerText = "⏳ Saving..."; btn.disabled = true;
+        let btnA = document.getElementById('btnApprove'); 
+        let btnM = document.getElementById('btnMissing'); 
+        let btnS = document.getElementById('btnSaveToResult');
+        
+        // 🔒 KHÓA TOÀN BỘ 3 NÚT TRONG LÚC XỬ LÝ
+        btnS.innerText = "⏳ Đang lưu..."; 
+        btnS.disabled = true; btnA.disabled = true; btnM.disabled = true;
 
         let payloadData = { ...row };
         payloadData["MÃ SINH VIÊN"] = generateMaSV(row); 
         payloadData["ĐIỂM TRÚNG TUYỂN"] = getRawScoreNumber(row);
         payloadData["KẾT QUẢ ĐIỂM"] = "Trúng tuyển";
-        
-        // 👉 ĐÂY CHÍNH LÀ DÒNG ĐÓNG MỘC THỜI GIAN THEO CHUẨN VIỆT NAM (DD/MM/YYYY HH:MM:SS)
         payloadData["NGÀY CẬP NHẬT HỒ SƠ"] = new Date().toLocaleString('vi-VN');
 
         try {
@@ -675,15 +701,20 @@ async function triggerSaveToSheet() {
             const result = await resp.json();
             if(result.status === "success") {
                 if (result.skipped > 0) { 
-                    showAlert(`Hồ sơ này đã có trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
-                    row._saved = true; updateModalActionButtons();
+                    showAlert(`Hồ sơ này đã tồn tại từ trước trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
                 } else {
-                    showAlert(`Lưu thành công !`, "✅ LƯU THÀNH CÔNG", false);
-                    row._saved = true; updateModalActionButtons();
+                    showAlert(`Lưu thành công vào CSDL!`, "✅ LƯU THÀNH CÔNG", false);
                 }
+                row._saved = true; updateModalActionButtons();
             }
-            else { showAlert("Lỗi: " + result.message, "❌ LỖI", true); btn.innerText = oldText; btn.disabled = false; }
-        } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); btn.innerText = oldText; btn.disabled = false; }
+            else { 
+                showAlert("Lỗi: " + result.message, "❌ LỖI", true); 
+                updateModalActionButtons(); // 🔓
+            }
+        } catch (e) { 
+            showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); 
+            updateModalActionButtons(); // 🔓
+        }
     }, "LƯU VÀO CSDL");
 }
 
