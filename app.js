@@ -144,7 +144,10 @@ function getVal(row, keys) {
         for (let rowKey in row) { 
             let cleanRowKey = rowKey.trim().toUpperCase().replace(/\s+/g, ' ');
             if (cleanRowKey === searchKey) {
-                let val = (row[rowKey] || "").trim();
+                // ĐÃ CHÍCH THUỐC: Bọc String(...) để ép mọi thứ (Số, Boolean) về dạng Chữ
+                let rawValue = row[rowKey] !== undefined && row[rowKey] !== null ? row[rowKey] : "";
+                let val = String(rawValue).trim();
+                
                 if(val.startsWith("'")) val = val.substring(1); 
                 return val;
             }
