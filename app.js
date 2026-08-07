@@ -1,8 +1,7 @@
 // ==========================================
 // CẤU HÌNH API VÀ BIẾN TOÀN CỤC
 // ==========================================
-const SHEET_ID = "1DBYrAObOLR7jtj74B_jBHVDf2I07UXc8zpgppvbabbs";
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&t=${new Date().getTime()}`;
+const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
 
 const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
@@ -28,7 +27,7 @@ window.onload = () => {
     const dd = String(today.getDate()).padStart(2, '0');
     document.getElementById('filter-to').value = `${yyyy}-${mm}-${dd}`;
     
-    fetchCSVData();
+    fetchSheetData();
     const crossCheckSelect = document.getElementById('ws-other-major');
     if (typeof DICT_NGANH !== 'undefined') {
         Object.keys(DICT_NGANH).forEach(nganh => crossCheckSelect.appendChild(new Option(nganh, nganh)));
@@ -105,14 +104,19 @@ function showPrompt(message, defaultVal, onYesCallback, title = "Yêu cầu nh�
     };
 }
 
+
 // ==========================================
-// ĐỌC VÀ LỌC DỮ LIỆU TỪ GOOGLE SHEET
+// ĐỌC VÀ LỌC DỮ LIỆU
 // ==========================================
-function fetchCSVData() {
-    Papa.parse(CSV_URL, {
-        download: true, header: true, skipEmptyLines: true,
-        complete: function(results) {
-            rawData = results.data.map(row => { 
+async function fetchSheetData() {
+    try {
+        document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu an toàn...";
+        
+        const response = await fetch(API_LAY_DU_LIEU);
+        const result = await response.json();
+
+        if (result.status === "success") {
+            rawData = result.data.map(row => { 
                 let trangThaiThamDinh = getVal(row, ["TRẠNG THÁI THẨM ĐỊNH", "TRẠNG THÁI"]);
                 let state = "Đang chờ duyệt"; let saved = false;
                 
@@ -125,9 +129,13 @@ function fetchCSVData() {
             });
             filteredData = [...rawData];
             populateFilters(); applyFilters();
-            document.getElementById('last-updated').innerText = `✔ Đồng bộ: ${new Date().toLocaleTimeString('vi-VN')}`;
+            document.getElementById('last-updated').innerText = `✔ Đồng bộ an toàn: ${new Date().toLocaleTimeString('vi-VN')}`;
+        } else {
+            showAlert("Lỗi tải dữ liệu: " + result.message, "❌ LỖI HỆ THỐNG", true);
         }
-    });
+    } catch (error) {
+        showAlert("Không thể kết nối đến máy chủ hoặc sai cấu hình URL API: " + error, "❌ LỖI KẾT NỐI", true);
+    }
 }
 
 function getVal(row, keys) {
