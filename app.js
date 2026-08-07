@@ -166,7 +166,24 @@ function getMissingDocs(row) {
     });
     return missing;
 }
-
+// ==========================================
+// HÀM MỚI: CHỈ QUÉT LỖI HỒ SƠ TIÊN QUYẾT 
+// (Dùng để khóa nút Duyệt)
+// ==========================================
+function getMissingTienQuyet(row) {
+    if (typeof DICT_HO_SO === 'undefined') return [];
+    const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
+    const dsTienQuyet = DICT_HO_SO.tien_quyet[dtDauVao] || [];
+    let missingTQ = [];
+    
+    dsTienQuyet.forEach(doc => {
+        let val = getVal(row, [doc.name]).toUpperCase();
+        if (val !== "TRUE" && val !== "1" && val !== "V" && val !== "X" && val !== "CÓ") {
+            missingTQ.push(doc.name);
+        }
+    });
+    return missingTQ;
+}
 function generateMaSV(row) {
     const namTuyen = getVal(row, ["NĂM XÉT TUYỂN", "Năm xét tuyển"]) || new Date().getFullYear();
     const heDaoTao = getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]);
@@ -324,8 +341,8 @@ function renderTable() {
 // ==========================================
 
 function exportExcel() {
-    if (filteredData.length === 0) { showAlert("Không có dữ liệu trên bảng để xuất Excel!", "LỖI TRỐNG DỮ LIỆU", true); return; }
-    if (typeof XLSX === 'undefined') { showAlert("Thư viện Excel chưa được tải, vui lòng tải lại trang!", "LỖI KẾT NỐI", true); return; }
+    if (filteredData.length === 0) { showAlert("Không có dữ liệu!", "LỖI TRỐNG DỮ LIỆU", true); return; }
+    if (typeof XLSX === 'undefined') { showAlert("Kết nối thất bại, vui lòng tải lại trang!", "LỖI KẾT NỐI", true); return; }
 
     let exportData = filteredData.map((row, index) => {
         let cleanLink = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]).replace(/^['"]+|['"]+$/g, '');
@@ -368,11 +385,11 @@ function exportExcel() {
 }
 
 async function syncToDaoTao() {
-    if (!API_DAO_TAO.includes("script.google.com")) { showAlert("Ông chưa dán Link API Đào tạo vào code!", "CẢNH BÁO", true); return; }
+    if (!API_DAO_TAO.includes("script.google.com")) { showAlert("Không tìm thấy địa chỉ của Đào tạo!", "CẢNH BÁO", true); return; }
     let approvedRows = rawData.filter(r => r._appState === "Đã duyệt");
-    if(approvedRows.length === 0) { showAlert("Hệ thống không tìm thấy hồ sơ nào có trạng thái 'Đã duyệt' để bàn giao!", "KHÔNG CÓ DỮ LIỆU", true); return; }
+    if(approvedRows.length === 0) { showAlert("Chưa có hồ sơ mới được duyệt!", "KHÔNG CÓ DỮ LIỆU", true); return; }
     
-    showConfirm(`Bạn chuẩn bị bàn giao danh sách <b>${approvedRows.length} hồ sơ TRÚNG TUYỂN</b> sang file của Phòng Đào tạo/CTSV.\n\nHệ thống sẽ tự động lọc những em đã gửi trước đó để không bị trùng lặp.\nTiếp tục?`, async () => {
+    showConfirm(`Gửi danh sách <b>${approvedRows.length} hồ sơ TRÚNG TUYỂN</b> sang Phòng Đào tạo/CTSV.\nTiếp tục?`, async () => {
         let btn = document.getElementById('btnSyncDaoTao'); let oldText = btn.innerText;
         btn.innerText = "⏳ Processing..."; btn.disabled = true;
 
@@ -397,7 +414,7 @@ async function syncToDaoTao() {
         try {
             const resp = await fetch(API_DAO_TAO, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
-            if(result.status === "success") showAlert(`Bàn giao thành công! Có ${result.added} hồ sơ MỚI đã được chèn vào.`, "🎉 THÀNH CÔNG", false);
+            if(result.status === "success") showAlert(`Bàn giao thành công! Có ${result.added} hồ sơ MỚI đã được gửi đi.`, "🎉 THÀNH CÔNG", false);
             else showAlert("Lỗi API máy chủ: \n" + result.message, "❌ LỖI", true);
         } catch (e) { showAlert("Lỗi kết nối mạng: " + e, "❌ LỖI", true); }
         btn.innerText = oldText; btn.disabled = false;
@@ -522,7 +539,6 @@ function handleCrossCheckChange() {
     updateModalActionButtons();
 }
 
-// ĐÃ KHÔI PHỤC LOGIC KHÓA MỞ 3 NÚT BẤM (CHỈ DISABLED, KHÔNG LÀM MẤT NÚT)
 function updateModalActionButtons() {
     const row = filteredData[currentCandidateIndex];
     const isSurveying = document.getElementById('ws-other-major').value !== "";
@@ -536,24 +552,41 @@ function updateModalActionButtons() {
 
     let isDuyet = (row._appState === "Đã duyệt");
     let isBaoThieu = (row._appState === "Đã báo thiếu");
+    
+    // GỌI MÁY QUÉT TIÊN QUYẾT ĐỂ XÉT ĐIỀU KIỆN KHÓA NÚT DUYỆT
+    let missingTQ = getMissingTienQuyet(row);
 
-    btnA.disabled = isDuyet || isBaoThieu; 
+    btnA.disabled = isDuyet || isBaoThieu || missingTQ.length > 0; 
     btnM.disabled = isDuyet || isBaoThieu; 
 
-    btnA.innerText = isDuyet ? "✅ Đã gửi Trúng Tuyển" : "✅ DUYỆT TRÚNG TUYỂN";
-    btnM.innerText = isBaoThieu ? "⚠️ Đã gửi Báo Thiếu" : "⚠️ Y/C BỔ SUNG HS";
+    // ĐỔI CHỮ THÔNG MINH TRÊN NÚT DUYỆT TRÚNG TUYỂN
+    if (isDuyet) {
+        btnA.innerText = "✅ Hồ sơ đã duyệt";
+    } else if (missingTQ.length > 0) {
+        btnA.innerText = "❌ Thiếu HS Tiên Quyết"; // Khóa nút & Cảnh báo ngầm
+    } else {
+        btnA.innerText = "✅ DUYỆT TRÚNG TUYỂN";
+    }
 
-    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu CSDL"; } 
+    btnM.innerText = isBaoThieu ? "⚠️ Đã yêu cầu bổ sung HS" : "⚠️ Y/C BỔ SUNG HS";
+
+    if (row._saved) { btnS.disabled = true; btnS.innerText = "💾 Đã lưu hồ sơ vào CSDL"; } 
     else { btnS.disabled = false; btnS.innerText = "💾 LƯU VÀO CSDL"; }
 }
 
 async function triggerApprove() {
     let row = filteredData[currentCandidateIndex];
-    if (getMissingDocs(row).length > 0) { showAlert("Không thể duyệt Trúng tuyển vì thí sinh vẫn CÒN THIẾU HỒ SƠ hợp lệ!", "⚠️ LỖI DUYỆT HỒ SƠ", true); return; }
+    let missingTQ = getMissingTienQuyet(row);
+    
+    // LÁ CHẮN THÉP: CHỈ CHẶN KHI THIẾU HỒ SƠ TIÊN QUYẾT
+    if (missingTQ.length > 0) { 
+        showAlert(`Không được duyệt!\nThí sinh đang nợ HỒ SƠ TIÊN QUYẾT: ${missingTQ.join(', ')}`, "⚠️ LỖI DUYỆT HỒ SƠ", true); 
+        return; 
+    }
     
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
-    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?`, async () => {
-        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Processing..."; btn.disabled = true;
+    showConfirm(`Bạn có chắc chắn muốn <b>DUYỆT TRÚNG TUYỂN</b> cho thí sinh: <span style="color:#d84315;">${hoTen}</span>?.`, async () => {
+        let btn = document.getElementById('btnApprove'); btn.innerText = "⏳ Đang xuất Biên nhận..."; btn.disabled = true;
         const payload = [{ 
             soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''), 
             hoTen: hoTen, 
@@ -572,6 +605,8 @@ async function triggerApprove() {
         } catch (e) { showAlert("Lỗi mạng: " + e, "❌ LỖI", true); btn.innerText = "✅ DUYỆT TRÚNG TUYỂN"; }
     }, "XÁC NHẬN TRÚNG TUYỂN");
 }
+
+
 
 async function triggerMissing() {
     let row = filteredData[currentCandidateIndex]; let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
