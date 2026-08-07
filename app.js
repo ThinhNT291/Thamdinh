@@ -459,7 +459,6 @@ function openDriveLink() {
 function prevWorkspace() { if (currentCandidateIndex > 0) openWorkspace(currentCandidateIndex - 1); }
 function nextWorkspace() { if (currentCandidateIndex < filteredData.length - 1) openWorkspace(currentCandidateIndex + 1); }
 
-// ĐÃ KHÔI PHỤC CHÍNH XÁC NỘI DUNG VĂN BẢN VÀ BẢNG ĐIỂM SẠCH SẼ
 function calculateAndRenderScores(row, targetNganh) {
     const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
     document.getElementById('ws-nganh').innerText = targetNganh;
@@ -470,7 +469,10 @@ function calculateAndRenderScores(row, targetNganh) {
     if (dtDauVao === "Tốt nghiệp THPT") {
         const diemCong = parseFloat(getVal(row, ["ĐIỂM CỘNG"]).replace(',','.')) || 0;
         const kvVal = getVal(row, ["KHU VỰC ƯU TIÊN"]); const dtVal = getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"]);
-        let uTienBanDau = (DICT_KHU_VUC[kvVal] || 0) + (DICT_DOI_TUONG[dtVal] || 0);
+        let uTienBanDau = 0;
+        if (typeof DICT_KHU_VUC !== 'undefined' && typeof DICT_DOI_TUONG !== 'undefined') {
+            uTienBanDau = (DICT_KHU_VUC[kvVal] || 0) + (DICT_DOI_TUONG[dtVal] || 0);
+        }
         
         let combos = DICT_NGANH[targetNganh] || [];
         let comboResults = []; let maxScore = 0; let bestCombo = ""; let finalTotalScore = 0; let finalUTien = 0;
@@ -513,21 +515,39 @@ function calculateAndRenderScores(row, targetNganh) {
         }
 
     } else {
+        // ÁP DỤNG LOGIC MỚI CHO CÁC ĐỐI TƯỢNG KHÁC THPT
+        const diemCong = parseFloat(getVal(row, ["ĐIỂM CỘNG"]).replace(',','.')) || 0;
+        const kvVal = getVal(row, ["KHU VỰC ƯU TIÊN"]); const dtVal = getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"]);
+        let uTienBanDau = 0;
+        if (typeof DICT_KHU_VUC !== 'undefined' && typeof DICT_DOI_TUONG !== 'undefined') {
+            uTienBanDau = (DICT_KHU_VUC[kvVal] || 0) + (DICT_DOI_TUONG[dtVal] || 0);
+        }
+
         let h4 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 4"]); let h10 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 10"]);
         let diemChuanText = "-";
-        if (h4) { diemChuanText = "02"; } else if (h10) { diemChuanText = "05"; }
+        
+        let dtbLabel = "ĐTB Hệ 4 / Hệ 10";
+        let dtbVal = "Chưa nhập điểm";
+        
+        if (h4 && !h10) { 
+            dtbLabel = "ĐTB Hệ 4"; dtbVal = h4; diemChuanText = "02";
+        } else if (h10 && !h4) { 
+            dtbLabel = "ĐTB Hệ 10"; dtbVal = h10; diemChuanText = "05";
+        } else if (h4 && h10) {
+            dtbLabel = "ĐTB Hệ 4 / Hệ 10"; dtbVal = `${h4} / ${h10}`; diemChuanText = "Hệ 4: 02 | Hệ 10: 05";
+        }
 
         summaryHTML = `
-            <div class="info-card"><span class="info-label">ĐTB Hệ 4</span><span class="info-val">${h4 || '-'}</span></div>
-            <div class="info-card"><span class="info-label">ĐTB Hệ 10</span><span class="info-val">${h10 || '-'}</span></div>
-            <div class="info-card"><span class="info-label">Điểm Chuẩn</span><span class="info-val"><span style="color:#2e7d32;font-weight:bold">${diemChuanText}</span></span></div>
+            <div class="info-card"><span class="info-label">Điểm cộng/ Điểm ưu tiên</span><span class="info-val">${diemCong}đ / ${uTienBanDau.toFixed(2)}đ</span></div>
+            <div class="info-card"><span class="info-label">${dtbLabel}</span><span class="info-val highlight">${dtbVal}</span></div>
+            <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">Điểm Chuẩn</span><span class="info-val" style="font-size:15px; color:#2e7d32;">${diemChuanText}</span></div>
         `;
     }
     document.getElementById('ws-score-summary').innerHTML = summaryHTML;
     document.getElementById('ws-combo-list-container').innerHTML = comboHTML;
 
     let missing = getMissingDocs(row);
-    let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đủ hồ sơ</span>`;
+    let htmlStatus = missing.length > 0 ? `<span style="color:#d84315;">⚠️ Thiếu: ${missing.join(', ')}</span>` : `<span style="color:#2e7d32;">✅ Đã nộp đủ hồ sơ hợp lệ</span>`;
     document.getElementById('ws-hoso-status').innerHTML = htmlStatus;
 }
 
@@ -638,24 +658,27 @@ async function triggerSaveToSheet() {
     let row = filteredData[currentCandidateIndex];
     let hoTen = getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]);
     
-    showConfirm(`Lưu hồ sơ của <b>${hoTen}</b> Cơ sở dữ liệu lưu trữ.\n\nBạn có muốn tiếp tục?`, async () => {
+    showConfirm(`Lưu hồ sơ <b>${hoTen}</b> vào CSDL.\n\nTiếp tục?`, async () => {
         let btn = document.getElementById('btnSaveToResult'); let oldText = btn.innerText;
-        btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
+        btn.innerText = "⏳ Saving..."; btn.disabled = true;
 
         let payloadData = { ...row };
         payloadData["MÃ SINH VIÊN"] = generateMaSV(row); 
         payloadData["ĐIỂM TRÚNG TUYỂN"] = getRawScoreNumber(row);
         payloadData["KẾT QUẢ ĐIỂM"] = "Trúng tuyển";
+        
+        // 👉 ĐÂY CHÍNH LÀ DÒNG ĐÓNG MỘC THỜI GIAN THEO CHUẨN VIỆT NAM (DD/MM/YYYY HH:MM:SS)
+        payloadData["NGÀY CẬP NHẬT HỒ SƠ"] = new Date().toLocaleString('vi-VN');
 
         try {
             const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
             const result = await resp.json();
             if(result.status === "success") {
                 if (result.skipped > 0) { 
-                    showAlert(`Hồ sơ này đã được lưu từ trước trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
+                    showAlert(`Hồ sơ này đã có trong CSDL!`, "⚠️ ĐÃ TỒN TẠI", true);
                     row._saved = true; updateModalActionButtons();
                 } else {
-                    showAlert(`Đã lưu thành công vào CSDL dự phòng!`, "✅ LƯU THÀNH CÔNG", false);
+                    showAlert(`Lưu thành công !`, "✅ LƯU THÀNH CÔNG", false);
                     row._saved = true; updateModalActionButtons();
                 }
             }
