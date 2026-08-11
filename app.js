@@ -2,7 +2,7 @@
 // CẤU HÌNH API VÀ BIẾN TOÀN CỤC
 // ==========================================
 const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
-
+const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
 const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
@@ -739,3 +739,252 @@ window.addEventListener('keydown', function(event) {
         if (wsModal && wsModal.style.display === 'flex') closeWorkspace(); 
     }
 });
+
+// ==========================================
+// CỤM TÍNH NĂNG AI: ĐỌC BẢNG ĐIỂM, ĐỐI SÁNH CTĐT & XUẤT TEMPLATE EXCEL
+// ==========================================
+let currentTranscriptJSON = []; 
+let currentTranscriptHTML = ""; 
+let currentCompareResultJSON = null; 
+let currentScanFileName = ""; 
+
+async function processTranscriptImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    currentScanFileName = file.name;
+    const statusText = document.getElementById('transcript-scan-status');
+    const btnReopen = document.getElementById('btnReopenTranscript');
+    
+    statusText.innerText = `⏳ Đang trích xuất dữ liệu: ${currentScanFileName}...`;
+    statusText.style.color = "#f57c00";
+    if(btnReopen) btnReopen.style.display = "none"; 
+
+    const sendToBackend = async (base64String, mimeType) => {
+        const payload = { imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
+
+        try {
+            const response = await fetch(API_QUET_CCCD, {
+                method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                let textResult = data.candidates[0].content.parts[0].text;
+                textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+                
+                try {
+                    currentTranscriptJSON = JSON.parse(textResult); 
+                    let tableHtml = `
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 80%; margin: 0 auto; border-collapse: collapse; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,0.05); font-size: 13px; text-align: center;">
+                            <thead style="background: #004d40; color: white; position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">STT</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; text-align: left; white-space: nowrap;">Tên môn học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">TC</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Đ.Chữ</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Hệ 4</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e0e0e0; white-space: nowrap;">Hệ 10</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                    
+                    currentTranscriptJSON.forEach((item, idx) => {
+                        tableHtml += `
+                            <tr onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='none'">
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${idx + 1}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; text-align: left; font-weight: bold;">${item.monhoc || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; color: #d84315; font-weight: bold;">${item.tinchi || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${item.diem_chu || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0;">${item.diem_he4 || ''}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e0e0e0; color: #2e7d32; font-weight: bold;">${item.diem_he10 || ''}</td>
+                            </tr>`;
+                    });
+                    tableHtml += `</tbody></table></div>`;
+
+                    currentTranscriptHTML = tableHtml; 
+                    showTranscriptTable(); 
+
+                    statusText.innerText = `✅ Đã xong! Vui lòng xem bảng.`;
+                    statusText.style.color = "#2e7d32";
+                    if(btnReopen) btnReopen.style.display = "inline-block"; 
+                    
+                } catch (e) {
+                    statusText.innerText = "❌ Không tìm thấy dữ liệu điểm rõ ràng."; statusText.style.color = "#d32f2f";
+                }
+            } else {
+                statusText.innerText = "❌ Lỗi trích xuất dữ liệu."; statusText.style.color = "#d32f2f";
+            }
+        } catch (error) { statusText.innerText = "❌ Lỗi máy chủ."; statusText.style.color = "#d32f2f"; }
+        input.value = ""; 
+    };
+
+    if (file.type === 'application/pdf') {
+        const reader = new FileReader(); reader.onloadend = () => { sendToBackend(reader.result.split(',')[1], 'application/pdf'); }; reader.readAsDataURL(file);
+    } else {
+        const img = new Image(); img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; 
+            let w = img.width; let h = img.height;
+            if (w > MAX_WIDTH) { h = Math.round((h * MAX_WIDTH) / w); w = MAX_WIDTH; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            sendToBackend(canvas.toDataURL('image/jpeg', 0.8).split(',')[1], 'image/jpeg');
+        };
+    }
+}
+
+function showTranscriptTable() {
+    document.getElementById('largeModalTitle').innerHTML = `<span>📑</span> Kết quả quét: ${currentScanFileName}`;
+    document.getElementById('largeModalContent').innerHTML = currentTranscriptHTML;
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
+        <button class="btn-modal-ok" style="background-color: #1976d2;" onclick="executeCompare()">⚖️ Phân tích & Đối sánh CTĐT</button>
+    `;
+    document.getElementById('largeTableModal').style.display = 'flex';
+}
+
+async function executeCompare() {
+    // Tự động bám theo Ngành đang khảo sát trên Web 2
+    const nganhChon = document.getElementById('ws-other-major').value || document.getElementById('ws-nganh').innerText;
+    if (!nganhChon) { alert("⚠️ Chưa có dữ liệu ngành đào tạo!"); return; }
+
+    const contentDiv = document.getElementById('largeModalContent');
+    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ ĐANG ĐỐI SÁNH TÍN CHỈ VỚI NGÀNH [${nganhChon.toUpperCase()}]...</h3><p style="text-align:center; font-style:italic;">Không đóng hoặc refresh trang web...</p>`;
+    
+    document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white; opacity:0.5;" disabled>Đang xử lý...</button>`;
+
+    const payload = { type: "doisanh", nganh: nganhChon, transcript: currentTranscriptJSON };
+
+    try {
+        const response = await fetch(API_QUET_CCCD, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        const data = await response.json();
+
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            let resultText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+            currentCompareResultJSON = JSON.parse(resultText);
+
+            let html = `
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">✅ CÁC MÔN CÓ THỂ XÉT TƯƠNG ĐƯƠNG</h3>
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
+                            <thead style="background: #e8f5e9; color: #1b5e20;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9;">Nhóm môn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; text-align:left;">Môn CTĐT chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9;">TC chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9; text-align:left;">Môn SV đã học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9;">TC đã học</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #c8e6c9;">Kết luận AI</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+            currentCompareResultJSON.matched.forEach(m => {
+                let color = m.ket_luan.includes("Đạt") ? "#2e7d32" : "#d84315";
+                html += `<tr onmouseover="this.style.background='#f9fbe7'" onmouseout="this.style.background='none'">
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;"><b>${m.mon_chuan}</b></td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${m.tin_chi_chuan}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left; color:#1565c0;">${m.mon_da_hoc}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${m.tin_chi_da_hoc}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #c8e6c9; font-weight:bold; color:${color};">${m.ket_luan}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+
+            html += `
+                <div>
+                    <h3 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px;">⚠️ CÁC MÔN SINH VIÊN CHƯA HỌC (CHƯA ĐỐI SÁNH ĐƯỢC)</h3>
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
+                            <thead style="background: #ffebee; color: #b71c1c;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2;">Nhóm môn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2; text-align:left;">Tên môn học chuẩn</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #ffcdd2;">TC yêu cầu</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+            currentCompareResultJSON.unmatched.forEach(u => {
+                html += `<tr onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='none'">
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
+                    <td style="padding: 6px 15px; border: 1px solid #ffcdd2; font-weight:bold; color:#d32f2f;">${u.tin_chi_chuan}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+
+            contentDiv.innerHTML = html;
+        } else { contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Định dạng lỗi hoặc không tìm thấy dữ liệu.</p>`; }
+    } catch (e) {
+        contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Lỗi kết nối.</p>`;
+    }
+    
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background-color: #6c757d; color: white;" onclick="showTranscriptTable()">⬅️ Quay lại bảng điểm</button>
+        <button class="btn-modal-cancel" style="background-color: #d32f2f; color: white;" onclick="document.getElementById('largeTableModal').style.display='none'">Đóng lại</button>
+    `;
+}
+
+// -------------------------------------------------------------
+// SIÊU TÍNH NĂNG: GOM DATA & GỬI LỆNH XUẤT TEMPLATE EXCEL
+// -------------------------------------------------------------
+async function exportToTemplate() {
+    if (currentCandidateIndex === -1) { showAlert("Vui lòng mở hồ sơ trước!", "❌ LỖI", true); return; }
+    
+    const row = filteredData[currentCandidateIndex];
+    let scoreText = getBestScoreText(row).replace(/<[^>]+>/g, ''); 
+    let dxt = "-", thxt = "-";
+    let match = scoreText.match(/([\d\.]+)\s*\((.*?)\)/); // Tách riêng Điểm và Tổ hợp
+    if(match) { dxt = match[1]; thxt = match[2]; } else { dxt = scoreText; }
+
+    const mappingData = {
+        "HO_TEN": getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
+        "CCCD": getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''),
+        "NGAY_SINH": getVal(row, ["NGÀY SINH", "NGÀNH SINH"]),
+        "NGANH_DANG_KY": getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+        "KHOA": getVal(row, ["KHÓA"]),
+        "HE_DAO_TAO": getVal(row, ["HỆ ĐÀO TẠO", "Hệ đào tạo"]),
+        "HINH_THUC_DAO_TAO": getVal(row, ["HÌNH THỨC ĐÀO TẠO", "Hình thức đào tạo"]),
+        "NAM_XET_TUYEN": getVal(row, ["NĂM XÉT TUYỂN"]),
+        "DOI_TUONG_DAU_VAO": getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]),
+        "LINK_HO_SO": getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]),
+        "KHU_VUC_UU_TIEN": getVal(row, ["KHU VỰC ƯU TIÊN"]),
+        "DOI_TUONG_UU_TIEN": getVal(row, ["ĐỐI TƯỢ ƯU TIÊN", "ĐỐI TƯỢNG ƯU TIÊN"]),
+        "GIAY_UU_TIEN": getVal(row, ["GIẤY TỜ ƯU TIÊN", "Giấy tờ ưu tiên"]),
+        "DIEM_CONG": getVal(row, ["ĐIỂM CỘNG"]),
+        "TO_HOP_XET_TUYEN": thxt,
+        "DIEM_XET_TUYEN": dxt, 
+        "TRANG_THAI_HO_SO": getMissingDocs(row).length > 0 ? "Thiếu hồ sơ" : "Đủ hồ sơ",
+        "KET_QUA_SO_TUYEN": row._appState
+    };
+
+    const btn = document.getElementById('btnExportTemplate');
+    const oldText = btn.innerText;
+    btn.innerText = "⏳ Đang tạo Excel..."; btn.disabled = true; btn.style.opacity = "0.7";
+
+    const payload = {
+        type: "exportTemplate",
+        mappingData: mappingData,
+        compareMatched: currentCompareResultJSON ? currentCompareResultJSON.matched : [],
+        compareUnmatched: currentCompareResultJSON ? currentCompareResultJSON.unmatched : []
+    };
+
+    try {
+        const response = await fetch(API_QUET_CCCD, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        const result = await response.json();
+        
+        if(result.status === "success") {
+            const link = document.createElement('a');
+            link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.base64;
+            link.download = `PhieuThamDinh_${mappingData.HO_TEN}_${mappingData.CCCD}.xlsx`;
+            link.click();
+            showAlert("Tải thành công", "✅ SUCCESSFUL !", false);
+        } else { showAlert("Lỗi tạo file: " + result.message, "❌ LỖI", true); }
+    } catch(e) { showAlert("Lỗi kết nối khi xuất Excel: " + e, "❌ LỖI MẠNG", true); }
+    
+    btn.innerText = oldText; btn.disabled = false; btn.style.opacity = "1";
+}
