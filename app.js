@@ -983,7 +983,7 @@ async function exportToTemplate() {
             link.download = `PhieuThamDinh_${mappingData.HO_TEN}_${mappingData.CCCD}.xlsx`;
             link.click();
             showAlert("Tải thành công", "✅ SUCCESSFUL !", false);
-        } else { showAlert("Lỗi tạo file: " + result.message, "❌ LỖI", true); }
+} else { showAlert("Lỗi tạo file: " + (result.message || result.error), "❌ LỖI", true); }
     } catch(e) { showAlert("Lỗi kết nối khi xuất Excel: " + e, "❌ LỖI MẠNG", true); }
     
     btn.innerText = oldText; btn.disabled = false; btn.style.opacity = "1";
