@@ -42,7 +42,7 @@ function closeCustomModal() {
     document.getElementById('modalPromptContainer').style.display = 'none';
 }
 
-function showAlert(message, title = "Hệ thống Thẩm định", isWarn = true, onOkCallback = null) {
+function showAlert(message, title = "Application Review Workspace", isWarn = true, onOkCallback = null) {
     const modal = document.getElementById('customModal');
     const header = document.getElementById('modalHeader');
     header.style.background = isWarn ? "#c62828" : "#00897b";
@@ -110,7 +110,7 @@ function showPrompt(message, defaultVal, onYesCallback, title = "Yêu cầu nh�
 // ==========================================
 async function fetchSheetData() {
     try {
-        document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu an toàn...";
+        document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu...";
         
         const response = await fetch(API_LAY_DU_LIEU);
         const result = await response.json();
