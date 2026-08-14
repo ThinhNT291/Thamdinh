@@ -673,18 +673,31 @@ function openWorkspace(index) {
     const row = filteredData[index];
     document.getElementById('ws-other-major').value = ""; 
 
-    // Reset kết quả quét bảng điểm/đối sánh CTĐT của hồ sơ trước đó — mỗi hồ sơ có kết quả riêng,
-    // tránh nút "Xem lại kết quả" hiện lại dữ liệu của thí sinh khác khi chuyển hồ sơ.
-    currentTranscriptJSON = [];
-    currentTranscriptHTML = "";
-    currentCompareResultJSON = null;
-    currentScanFileName = "";
+    // Nạp lại kết quả quét bảng điểm/đối sánh CTĐT ĐÚNG của hồ sơ này (nếu trước đó đã quét) —
+    // mỗi hồ sơ giữ kết quả riêng theo candidateScanCache, tránh vừa hiện nhầm dữ liệu thí sinh khác,
+    // vừa tránh mất kết quả khi bấm Trước/Sau quay lại đúng hồ sơ cũ.
+    currentCandidateScanKey = getCandidateScanKey(row);
+    const cachedScan = candidateScanCache[currentCandidateScanKey];
+    if (cachedScan) {
+        currentTranscriptJSON = cachedScan.transcriptJSON || [];
+        currentTranscriptHTML = cachedScan.transcriptHTML || "";
+        currentCompareResultJSON = cachedScan.compareResultJSON || null;
+        currentScanFileName = cachedScan.scanFileName || "";
+    } else {
+        currentTranscriptJSON = [];
+        currentTranscriptHTML = "";
+        currentCompareResultJSON = null;
+        currentScanFileName = "";
+    }
     const transcriptFileInput = document.getElementById('transcriptFile');
     if (transcriptFileInput) transcriptFileInput.value = "";
     const btnReopenTranscript = document.getElementById('btnReopenTranscript');
-    if (btnReopenTranscript) btnReopenTranscript.style.display = 'none';
+    if (btnReopenTranscript) btnReopenTranscript.style.display = currentTranscriptHTML ? 'inline-block' : 'none';
     const scanStatus = document.getElementById('transcript-scan-status');
-    if (scanStatus) { scanStatus.innerText = ''; }
+    if (scanStatus) {
+        scanStatus.innerText = currentTranscriptHTML ? `✅ Đã có kết quả quét trước đó (${currentScanFileName || 'bấm "Xem lại kết quả"'}).` : '';
+        scanStatus.style.color = "#2e7d32";
+    }
     
     document.getElementById('btnPrevWS').disabled = (index === 0);
     document.getElementById('btnNextWS').disabled = (index === filteredData.length - 1);
@@ -981,6 +994,9 @@ function closeLargeTableModal() { document.getElementById('largeTableModal').sty
 
 window.addEventListener('keydown', function(event) {
     if (event.key === "Escape") { 
+        const feedbackModal = document.getElementById('feedbackModal');
+        if (feedbackModal && feedbackModal.style.display === 'flex') { closeFeedbackModal(); return; }
+
         const customModal = document.getElementById('customModal');
         if (customModal && customModal.style.display === 'flex') { closeCustomModal(); return; }
 
@@ -1000,11 +1016,46 @@ let currentTranscriptHTML = "";
 let currentCompareResultJSON = null; 
 let currentScanFileName = ""; 
 
+// ---- CACHE KẾT QUẢ SCAN/ĐỐI SÁNH THEO TỪNG HỒ SƠ (tồn tại tới hết session) ----
+// Trước đây mỗi lần openWorkspace() đều xoá trắng currentTranscriptJSON/currentCompareResultJSON
+// để tránh hồ sơ này hiện nhầm kết quả của hồ sơ khác — nhưng hệ quả phụ là quay lại ĐÚNG hồ sơ cũ
+// (bấm Trước/Sau qua lại) cũng mất luôn kết quả đã quét. Giờ tách riêng theo "khoá hồ sơ" (ưu tiên
+// số CCCD, hồ sơ nào không có CCCD thì dùng Họ tên+Ngày nộp) — mỗi hồ sơ giữ đúng kết quả của mình.
+let candidateScanCache = {};
+let currentCandidateScanKey = "";
+
+(function restoreCandidateScanCache() {
+    try {
+        const raw = sessionStorage.getItem('td_scan_cache_v1');
+        if (raw) candidateScanCache = JSON.parse(raw) || {};
+    } catch (e) { candidateScanCache = {}; }
+})();
+
+function getCandidateScanKey(row) {
+    const cccd = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '').trim();
+    if (cccd) return cccd;
+    return (getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]) + "|" + getVal(row, ["TIME"])).trim();
+}
+
+// Gọi sau khi scan bảng điểm HOẶC đối sánh CTĐT thành công, lưu lại đúng vào hồ sơ đang mở.
+function saveCurrentScanToCache() {
+    if (!currentCandidateScanKey) return;
+    candidateScanCache[currentCandidateScanKey] = {
+        transcriptJSON: currentTranscriptJSON,
+        transcriptHTML: currentTranscriptHTML,
+        compareResultJSON: currentCompareResultJSON,
+        scanFileName: currentScanFileName
+    };
+    try { sessionStorage.setItem('td_scan_cache_v1', JSON.stringify(candidateScanCache)); }
+    catch (e) { /* bỏ qua nếu vượt quota sessionStorage, cache trong JS vẫn còn dùng được trong phiên hiện tại */ }
+}
+
 async function processTranscriptImage(input) {
     const file = input.files[0];
     if (!file) return;
 
     currentScanFileName = file.name;
+    currentCompareResultJSON = null; // Quét bảng điểm mới → kết quả đối sánh cũ (nếu có) không còn đúng nữa
     const statusText = document.getElementById('transcript-scan-status');
     const btnReopen = document.getElementById('btnReopenTranscript');
     
@@ -1057,6 +1108,7 @@ async function processTranscriptImage(input) {
                     tableHtml += `</tbody></table></div>`;
 
                     currentTranscriptHTML = tableHtml; 
+                    saveCurrentScanToCache();
                     showTranscriptTable(); 
 
                     statusText.innerText = `✅ Đã xong! Vui lòng xem bảng.`;
@@ -1117,6 +1169,7 @@ async function executeCompare() {
         if (data.candidates && data.candidates[0].content.parts[0].text) {
             let resultText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
             currentCompareResultJSON = JSON.parse(resultText);
+            saveCurrentScanToCache();
 
             let html = `
                 <div style="margin-bottom: 25px;">
@@ -1316,4 +1369,64 @@ async function exportToTemplate() {
     } catch(e) { showAlert("Lỗi kết nối khi xuất Excel: " + e, "❌ LỖI MẠNG", true); }
     
     btn.innerText = oldText; btn.disabled = false; btn.style.opacity = "1";
+}
+
+// ==========================================
+// GỬI PHẢN HỒI LỖI TRONG QUÁ TRÌNH SỬ DỤNG
+// Dùng chung backend GAS_GoiAPI.txt (đã có sẵn xác thực idToken + whitelist) — thêm nhánh "feedback",
+// bắn nội dung kèm tên tài khoản gửi về Google Chat.
+// ==========================================
+const FEEDBACK_PLACEHOLDER = "Mô tả chính xác và ngắn gọn lỗi bạn gặp phải, chúng tôi sẽ kiểm tra ngay.";
+
+function openFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (!modal) return;
+    document.getElementById('feedbackBody').innerHTML = `
+        <textarea id="feedbackText" rows="5" placeholder="${FEEDBACK_PLACEHOLDER}"
+            style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; font-family:inherit; resize:vertical; outline:none;"></textarea>
+    `;
+    document.getElementById('feedbackFooter').innerHTML = `
+        <button class="btn-modal-cancel" onclick="closeFeedbackModal()">Hủy bỏ</button>
+        <button class="btn-modal-ok" id="btnFeedbackSend" onclick="submitFeedback()">📤 Gửi</button>
+    `;
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('feedbackText')?.focus(), 50);
+}
+
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitFeedback() {
+    const textEl = document.getElementById('feedbackText');
+    const content = textEl ? textEl.value.trim() : "";
+    if (!content) { if (textEl) textEl.style.borderColor = "#d32f2f"; return; }
+
+    const btn = document.getElementById('btnFeedbackSend');
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ Đang gửi..."; btn.style.opacity = "0.7"; }
+
+    try {
+        const resp = await fetch(API_QUET_CCCD, {
+            method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ idToken: currentIdToken, type: "feedback", noiDung: content })
+        });
+        const result = await resp.json();
+
+        if (result.status === "success") {
+            document.getElementById('feedbackBody').innerHTML = `
+                <p style="text-align:center; font-size:14px; color:#2e7d32; padding:14px 0;">✅ Cảm ơn bạn, chúng tôi đã nhận được phản hồi.</p>
+            `;
+            document.getElementById('feedbackFooter').innerHTML = `<button class="btn-modal-ok" onclick="closeFeedbackModal()">Đóng</button>`;
+            setTimeout(closeFeedbackModal, 2500);
+        } else {
+            document.getElementById('feedbackBody').insertAdjacentHTML('beforeend',
+                `<p style="color:#d32f2f; font-size:13px; margin-top:8px;">❌ ${result.message || result.error || 'Gửi thất bại, vui lòng thử lại.'}</p>`);
+            if (btn) { btn.disabled = false; btn.innerText = "📤 Gửi"; btn.style.opacity = "1"; }
+        }
+    } catch (e) {
+        document.getElementById('feedbackBody').insertAdjacentHTML('beforeend',
+            `<p style="color:#d32f2f; font-size:13px; margin-top:8px;">❌ Lỗi kết nối, vui lòng thử lại.</p>`);
+        if (btn) { btn.disabled = false; btn.innerText = "📤 Gửi"; btn.style.opacity = "1"; }
+    }
 }
