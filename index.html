@@ -10,14 +10,72 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        /* Màn hình chặn đăng nhập — dàn hàng ngang tiêu đề, responsive cho mobile/tablet */
+        #loginGate { box-sizing: border-box; }
+        #loginGate * { box-sizing: border-box; }
+        #loginGate .gate-box {
+            background:#fff;
+            padding: clamp(20px, 5vw, 30px) clamp(16px, 4vw, 25px);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 480px;
+            width: 100%;
+        }
+        #loginGate .gate-title {
+            margin-top: 0;
+            font-size: clamp(16px, 4.2vw, 22px);
+            line-height: 1.35;
+            white-space: normal;
+            word-break: keep-all;
+            overflow-wrap: break-word;
+        }
+        @media (max-width: 380px) {
+            #loginGate .gate-title { font-size: 16px; }
+        }
+        /* Màn hình máy tính: mở rộng khung ra để tiêu đề nằm gọn 1 hàng, không bị rớt chữ xuống dòng */
+        @media (min-width: 601px) {
+            #loginGate .gate-box { max-width: 640px; }
+            #loginGate .gate-title { font-size: 22px; white-space: nowrap; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="container" style="max-width: 1600px;">
+<!-- ========================================================
+     MÀN HÌNH CHẶN — BẮT BUỘC ĐĂNG NHẬP GOOGLE (VÀ NẰM TRONG WHITELIST "THẨM ĐỊNH")
+     TRƯỚC KHI ĐƯỢC VÀO GIAO DIỆN DUYỆT HỒ SƠ.
+     ======================================================== -->
+<div id="loginGate" style="display:flex; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:#f0f2f5; padding:16px; text-align:center; width:100%;">
+    <div class="gate-box">
+        <h2 class="gate-title">🔎 APPLICATION REVIEW WORKSPACE</h2>
+        <p style="color:#555; font-size:14px; margin-bottom:20px;">Vui lòng đăng nhập để tiếp tục.</p>
+        <div id="g_id_onload"
+             data-client_id="311965248456-01ts8h9g6tuj0slob58n8vrfm091c4u7.apps.googleusercontent.com"
+             data-callback="handleGoogleLogin"
+             data-auto_select="true">
+        </div>
+        <div style="display:flex; justify-content:center;">
+            <div class="g_id_signin" data-type="standard" data-size="large" data-shape="pill"></div>
+        </div>
+        <div id="gate-account-label" style="font-weight:bold; font-size:13px; margin-top:14px;"></div>
+    </div>
+</div>
+
+<div class="container" id="mainAppContent" style="max-width: 1600px; display:none;">
     <h1>
         <span>📊 BAN THẨM ĐỊNH HỒ SƠ TUYỂN SINH</span>
         <span style="font-size: 11px; font-weight: normal; color: #666;" id="last-updated">⏳ Loading...</span>
     </h1>
+
+    <!-- ========================================================
+         TRẠNG THÁI ĐĂNG NHẬP GOOGLE — HIỂN THỊ TÀI KHOẢN + NÚT ĐĂNG XUẤT
+         ======================================================== -->
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:12px; padding:8px 10px; background:#f5f5f5; border-radius:6px; border:1px solid #e0e0e0;">
+        <span id="current-account-label" style="font-weight:bold; font-size:13px;"></span>
+        <button type="button" id="btnSignOut" onclick="signOutUser()" style="display:none; background:#c62828; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">🚪 Đăng xuất</button>
+    </div>
 
     <div class="kpi-grid">
         <div class="kpi-card"><span class="kpi-title">📁 Tổng số hồ sơ: </span><span class="kpi-value" id="kpi-total">0</span></div>
