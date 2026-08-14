@@ -138,7 +138,7 @@
     </div>
 </div>
 
-<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037</div>
+<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037 &nbsp;|&nbsp; <span id="btnOpenFeedback" onclick="openFeedbackModal()" style="cursor:pointer; text-decoration:underline; font: inherit; color: inherit;">📩 Gửi phản hồi lỗi trong quá trình sử dụng</span></div>
 
 <!-- ============================================== -->
 <!-- WORKSPACE MODAL (BẢNG THẨM ĐỊNH CHI TIẾT) -->
@@ -228,6 +228,18 @@
         </div>
     </div>
 </div>
+<!-- KHUNG MODAL: GỬI PHẢN HỒI LỖI TRONG QUÁ TRÌNH SỬ DỤNG -->
+<div id="feedbackModal" class="workspace-overlay" style="z-index: 100050; display: none;">
+    <div class="workspace-modal" style="width: 90%; max-width: 420px; height: auto;">
+        <div class="ws-header" style="font-size: 14px; background: #6a1b9a;">
+            <span>📩 Gửi phản hồi nếu có lỗi</span>
+            <span style="cursor:pointer;" onclick="closeFeedbackModal()">✖</span>
+        </div>
+        <div id="feedbackBody" class="ws-body" style="padding: 18px 15px;"></div>
+        <div id="feedbackFooter" style="padding: 10px 15px; background: #f1f1f1; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 8px;"></div>
+    </div>
+</div>
+
 <!-- GỌI SCRIPT: Cấu hình chung và Code riêng của Web2 (Tương đối 100%) -->
 <script src="data_config.js"></script>
 <script src="app.js"></script>
