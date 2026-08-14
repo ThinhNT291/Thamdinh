@@ -7,7 +7,7 @@ const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAV
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
 const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
 const API_LUU_KETQUA = "https://script.google.com/macros/s/AKfycbxLC5OQqEQ3N6Y856F2hlfKn0bppy6U042V3Jh21JJIou44z6rg03zpcLwGp19UnZgLFg/exec"; 
-
+const API_REQUEST_ACCESS = "https://script.google.com/macros/s/AKfycbxj1dBaUFYXSK_LKeNIhDNdLIl0ZPuoylNf1e9U2tYK_CX-cO1s6rA5NMzlKGsNEe3jcw/exec";
 // ==========================================
 // ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN BAN THẨM ĐỊNH)
 // Dùng CHUNG Google Client ID với "Web 1" (chỉ là định danh Google, không phải quyền hạn),
@@ -17,10 +17,52 @@ let currentIdToken = null;   // JWT gốc — gửi lên server để server t�
 let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
 let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist "Thẩm định"
-
+let __isRequestAccessFlow = false;
 function isLoggedIn() {
     return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
 }
+
+document.getElementById('btnRequestAccess')?.addEventListener('click', () => {
+    __isRequestAccessFlow = true;
+    google.accounts.id.prompt(); // Bật lại hộp thoại chọn tài khoản Google
+});
+
+// Giải mã email từ JWT phía client CHỈ để hiển thị xác nhận — server vẫn tự xác minh lại token thật khi gửi
+function decodeJwtEmail(jwt) {
+    try { return JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email; }
+    catch(e) { return null; }
+}
+
+async function processAccessRequest(idToken) {
+    const email = decodeJwtEmail(idToken) || "(không đọc được email)";
+    showConfirm(
+        `Gửi yêu cầu quyền truy cập bằng tài khoản:<br><b>${email}</b>?`,
+        async () => {
+            try {
+                const resp = await fetch(API_REQUEST_ACCESS, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ idToken })
+                });
+                const result = await resp.json();
+                if (result.status === "success") showAlert("Đã gửi yêu cầu. Vui lòng chờ được cấp quyền.", "✅ Thành công", false);
+                else showAlert(result.message || "Gửi yêu cầu thất bại.", "❌ Lỗi", true);
+            } catch (err) {
+                showAlert("Lỗi kết nối: " + err.message, "❌ Lỗi", true);
+            }
+        },
+        "Xác nhận yêu cầu quyền truy cập"
+    );
+}
+
+
+
+
+
+
+
+
+
 
 // Ẩn/hiện toàn bộ giao diện duyệt hồ sơ: chỉ mở khi đã đăng nhập VÀ được server xác nhận whitelist Thẩm định.
 function updateAppGate() {
@@ -93,6 +135,10 @@ async function verifyLoginWithServer(idToken) {
 }
 
 async function handleGoogleLogin(response) {
+        if (__isRequestAccessFlow) {
+        __isRequestAccessFlow = false;
+        processAccessRequest(response.credential);
+        return;}
     // Báo ngay cho người dùng biết trang đang xử lý, tránh cảm giác "im lìm" trong lúc chờ server xác thực.
     const gateLabel = document.getElementById('gate-account-label');
     if (gateLabel) {
