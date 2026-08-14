@@ -56,12 +56,12 @@
              data-callback="handleGoogleLogin"
              data-auto_select="true">
         </div>
-        <div style="display:flex; justify-content:center;">
+        <div style="display:flex; justify-content:center; align-items:center; gap:14px; flex-wrap:wrap;">
             <div class="g_id_signin" data-type="standard" data-size="large" data-shape="pill"></div>
-            <!-- Thêm ngay sau div.g_id_signin trong #loginGate .gate-box -->
-            <button type="button" id="btnRequestAccess" style="margin-top:12px; background:none; border:1px solid #999; color:#555; padding:6px 16px; border-radius:20px; font-size:12px; cursor:pointer;">
-    🔓 Request access
-</button>
+            <!-- Cùng chiều cao (40px) + cùng font với nút Google Sign-In "large/pill" để 2 nút cân đối, khối 2 nút tự canh giữa nhờ justify-content:center ở div cha -->
+            <button type="button" id="btnRequestAccess" style="height:40px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; background:none; border:1px solid #999; color:#555; padding:0 18px; border-radius:20px; font-size:14px; font-family:'Google Sans',Roboto,Arial,sans-serif; font-weight:500; line-height:1; cursor:pointer;">
+                🔓 Request access
+            </button>
         </div>
         <div id="gate-account-label" style="font-weight:bold; font-size:13px; margin-top:14px;"></div>
     </div>
@@ -131,7 +131,9 @@
                     <th style="width: 100px; text-align: center;">THẨM ĐỊNH</th>
                 </tr>
             </thead>
-            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 25px;">⏳ Đang tải hồ sơ...</td></tr></tbody>
+            <tbody id="table-body"><tr><td colspan="10" style="text-align:center; padding: 30px;">
+                <button type="button" id="btnLoadList" class="btn-export" style="font-size:13px; padding:10px 22px;" onclick="manualLoadData()">📥 Bấm vào đây để lấy danh sách mới nhất</button>
+            </td></tr></tbody>
         </table>
     </div>
 </div>
