@@ -71,11 +71,16 @@ function updateAppGate() {
     const loggedIn = isLoggedIn();
     if (gate) gate.style.display = loggedIn ? 'none' : 'flex';
     if (app) app.style.display = loggedIn ? '' : 'none';
-    // Chỉ tải dữ liệu khi vừa mở khoá xong lần đầu, tránh gọi API khi chưa có quyền.
-    if (loggedIn && !window.__dataFetchedOnce) {
-        window.__dataFetchedOnce = true;
-        fetchSheetData();
-    }
+    // KHÔNG tự động fetchSheetData() nữa: dữ liệu chỉ được tải khi người dùng chủ động
+    // bấm nút "Bấm vào đây để lấy danh sách mới nhất" (xem manualLoadData()).
+}
+
+// Được gọi khi người dùng bấm nút tải danh sách trong bảng (thay cho auto-fetch khi vào trang).
+async function manualLoadData() {
+    const btn = document.getElementById('btnLoadList');
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ Đang tải danh sách..."; btn.style.opacity = "0.7"; }
+    window.__dataFetchedOnce = true;
+    await fetchSheetData();
 }
 
 function updateAccountLabel() {
@@ -351,10 +356,19 @@ async function fetchSheetData() {
             document.getElementById('last-updated').innerText = `✔ Đồng bộ an toàn: ${new Date().toLocaleTimeString('vi-VN')}`;
         } else {
             showAlert("Lỗi tải dữ liệu: " + result.message, "❌ LỖI HỆ THỐNG", true);
+            resetLoadListButton();
         }
     } catch (error) {
         showAlert("Không thể kết nối đến máy chủ hoặc sai cấu hình URL API: " + error, "❌ LỖI KẾT NỐI", true);
+        resetLoadListButton();
     }
+}
+
+// Khôi phục nút "Bấm vào đây để lấy danh sách" khi tải thất bại, để người dùng bấm thử lại.
+function resetLoadListButton() {
+    window.__dataFetchedOnce = false;
+    const btn = document.getElementById('btnLoadList');
+    if (btn) { btn.disabled = false; btn.innerText = "📥 Bấm vào đây để lấy danh sách mới nhất"; btn.style.opacity = "1"; }
 }
 
 function getVal(row, keys) {
@@ -1087,7 +1101,7 @@ async function executeCompare() {
 
             let html = `
                 <div style="margin-bottom: 25px;">
-                    <h3 style="color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">✅ CÁC MÔN CÓ THỂ XÉT TƯƠNG ĐƯƠNG</h3>
+                    <h3 style="color: #2e7d32; border-bottom: 2px solid #2e7d32; padding-bottom: 5px;">📋 KẾT QUẢ ĐỐI SÁNH SƠ BỘ</h3>
                     <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
                         <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
                             <thead style="background: #e8f5e9; color: #1b5e20;">
@@ -1101,8 +1115,11 @@ async function executeCompare() {
                                 </tr>
                             </thead>
                             <tbody>`;
+            let b1_tcChuan = 0, b1_tcDaHoc = 0;
             currentCompareResultJSON.matched.forEach(m => {
                 let color = m.ket_luan.includes("Đạt") ? "#2e7d32" : "#d84315";
+                b1_tcChuan += parseFloat(m.tin_chi_chuan) || 0;
+                b1_tcDaHoc += parseFloat(m.tin_chi_da_hoc) || 0;
                 html += `<tr onmouseover="this.style.background='#f9fbe7'" onmouseout="this.style.background='none'">
                     <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;">${m.nhom_mon}</td>
                     <td style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;"><b>${m.mon_chuan}</b></td>
@@ -1112,11 +1129,26 @@ async function executeCompare() {
                     <td style="padding: 6px 15px; border: 1px solid #c8e6c9; font-weight:bold; color:${color};">${m.ket_luan}</td>
                 </tr>`;
             });
-            html += `</tbody></table></div></div>`;
+            html += `</tbody>
+                        <tfoot>
+                            <tr style="background:#c8e6c9; font-weight:bold; color:#1b5e20;">
+                                <td colspan="2" style="padding: 6px 15px; border: 1px solid #c8e6c9; text-align:left;">Tổng cộng (${currentCompareResultJSON.matched.length} môn)</td>
+                                <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${b1_tcChuan}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #c8e6c9;"></td>
+                                <td style="padding: 6px 15px; border: 1px solid #c8e6c9;">${b1_tcDaHoc}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #c8e6c9;"></td>
+                            </tr>
+                        </tfoot>
+                    </table></div></div>`;
 
+            // Bảng 2 và Bảng 3 đặt song song (side-by-side), tự xuống hàng trên màn hình hẹp.
+            html += `<div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">`;
+
+            // ---- Bảng 2: các môn CTĐT chưa tìm được môn tương ứng nào trong bảng điểm ----
+            let b2_tc = 0;
             html += `
-                <div>
-                    <h3 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px;">⚠️ CÁC MÔN SINH VIÊN CHƯA HỌC (CHƯA ĐỐI SÁNH ĐƯỢC)</h3>
+                <div style="flex:1; min-width:320px;">
+                    <h3 style="color: #d32f2f; border-bottom: 2px solid #d32f2f; padding-bottom: 5px; font-size:14px;">⚠️ CÁC MÔN SINH VIÊN CHƯA HỌC, BAO GỒM MÔN TỰ CHỌN (CHƯA ĐỐI SÁNH ĐƯỢC)</h3>
                     <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
                         <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
                             <thead style="background: #ffebee; color: #b71c1c;">
@@ -1128,13 +1160,71 @@ async function executeCompare() {
                             </thead>
                             <tbody>`;
             currentCompareResultJSON.unmatched.forEach(u => {
+                b2_tc += parseFloat(u.tin_chi_chuan) || 0;
                 html += `<tr onmouseover="this.style.background='#fff3e0'" onmouseout="this.style.background='none'">
                     <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left;">${u.nhom_mon}</td>
                     <td style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left; font-weight:bold;">${u.mon_chuan}</td>
                     <td style="padding: 6px 15px; border: 1px solid #ffcdd2; font-weight:bold; color:#d32f2f;">${u.tin_chi_chuan}</td>
                 </tr>`;
             });
-            html += `</tbody></table></div></div>`;
+            html += `</tbody>
+                        <tfoot>
+                            <tr style="background:#ffcdd2; font-weight:bold; color:#b71c1c;">
+                                <td colspan="2" style="padding: 6px 15px; border: 1px solid #ffcdd2; text-align:left;">Tổng cộng (${currentCompareResultJSON.unmatched.length} môn)</td>
+                                <td style="padding: 6px 15px; border: 1px solid #ffcdd2;">${b2_tc}</td>
+                            </tr>
+                        </tfoot>
+                    </table></div></div>`;
+
+            // ---- Bảng 3: các môn ĐÃ HỌC (có trong bảng điểm đã scan) nhưng KHÔNG được dùng để đối sánh ở Bảng 1 ----
+            // Logic giống Bảng 2 nhưng lấy "phần dư" từ phía bảng điểm (currentTranscriptJSON) thay vì phía KHO_CTDT:
+            // lấy toàn bộ môn trong bảng điểm, trừ đi các môn đã xuất hiện ở cột "mon_da_hoc" của Bảng 1.
+            const tenMonDaDoiSanh = new Set(
+                currentCompareResultJSON.matched.map(m => String(m.mon_da_hoc || "").trim().toLowerCase())
+            );
+            const monHocKhongDuDieuKien = (currentTranscriptJSON || []).filter(
+                t => !tenMonDaDoiSanh.has(String(t.monhoc || "").trim().toLowerCase())
+            );
+            let b3_tc = 0;
+            html += `
+                <div style="flex:1; min-width:320px;">
+                    <h3 style="color: #6a1b9a; border-bottom: 2px solid #6a1b9a; padding-bottom: 5px; font-size:14px;">📘 CÁC MÔN ĐÃ HỌC NHƯNG KHÔNG ĐỦ ĐIỀU KIỆN ĐỐI SÁNH</h3>
+                    <div style="display:flex; justify-content:center; width:100%; overflow-x: auto; padding: 10px 0;">
+                        <table style="width: max-content !important; min-width: 90%; margin: 0 auto; border-collapse: collapse; font-size: 13px; text-align: center; box-shadow: 0 0 5px rgba(0,0,0,0.05);">
+                            <thead style="background: #f3e5f5; color: #4a148c;">
+                                <tr>
+                                    <th style="padding: 8px 15px; border: 1px solid #e1bee7; text-align:left;">Tên môn học (đã học)</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e1bee7;">Số TC</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e1bee7;">Điểm chữ</th>
+                                    <th style="padding: 8px 15px; border: 1px solid #e1bee7;">Hệ 10</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+            if (monHocKhongDuDieuKien.length === 0) {
+                html += `<tr><td colspan="4" style="padding: 10px; border: 1px solid #e1bee7; color:#888; font-style:italic;">Không còn môn nào.</td></tr>`;
+            } else {
+                monHocKhongDuDieuKien.forEach(t => {
+                    b3_tc += parseFloat(t.tinchi) || 0;
+                    html += `<tr onmouseover="this.style.background='#f9f0fb'" onmouseout="this.style.background='none'">
+                        <td style="padding: 6px 15px; border: 1px solid #e1bee7; text-align:left; font-weight:bold;">${t.monhoc || ''}</td>
+                        <td style="padding: 6px 15px; border: 1px solid #e1bee7; font-weight:bold; color:#6a1b9a;">${t.tinchi || ''}</td>
+                        <td style="padding: 6px 15px; border: 1px solid #e1bee7;">${t.diem_chu || ''}</td>
+                        <td style="padding: 6px 15px; border: 1px solid #e1bee7;">${t.diem_he10 || ''}</td>
+                    </tr>`;
+                });
+            }
+            html += `</tbody>
+                        <tfoot>
+                            <tr style="background:#e1bee7; font-weight:bold; color:#4a148c;">
+                                <td style="padding: 6px 15px; border: 1px solid #e1bee7; text-align:left;">Tổng cộng (${monHocKhongDuDieuKien.length} môn)</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e1bee7;">${b3_tc}</td>
+                                <td style="padding: 6px 15px; border: 1px solid #e1bee7;"></td>
+                                <td style="padding: 6px 15px; border: 1px solid #e1bee7;"></td>
+                            </tr>
+                        </tfoot>
+                    </table></div></div>`;
+
+            html += `</div>`; // đóng flex row bảng 2 + bảng 3
 
             contentDiv.innerHTML = html;
         } else { contentDiv.innerHTML = `<p style="color:red; text-align:center;">❌ Định dạng lỗi hoặc không tìm thấy dữ liệu.</p>`; }
