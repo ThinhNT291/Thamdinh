@@ -672,6 +672,19 @@ function openWorkspace(index) {
     currentCandidateIndex = index;
     const row = filteredData[index];
     document.getElementById('ws-other-major').value = ""; 
+
+    // Reset kết quả quét bảng điểm/đối sánh CTĐT của hồ sơ trước đó — mỗi hồ sơ có kết quả riêng,
+    // tránh nút "Xem lại kết quả" hiện lại dữ liệu của thí sinh khác khi chuyển hồ sơ.
+    currentTranscriptJSON = [];
+    currentTranscriptHTML = "";
+    currentCompareResultJSON = null;
+    currentScanFileName = "";
+    const transcriptFileInput = document.getElementById('transcriptFile');
+    if (transcriptFileInput) transcriptFileInput.value = "";
+    const btnReopenTranscript = document.getElementById('btnReopenTranscript');
+    if (btnReopenTranscript) btnReopenTranscript.style.display = 'none';
+    const scanStatus = document.getElementById('transcript-scan-status');
+    if (scanStatus) { scanStatus.innerText = ''; }
     
     document.getElementById('btnPrevWS').disabled = (index === 0);
     document.getElementById('btnNextWS').disabled = (index === filteredData.length - 1);
@@ -962,12 +975,18 @@ async function triggerSaveToSheet() {
     }, "LƯU VÀO CSDL");
 }
 
-// KHÓA SỰ KIỆN NÚT ESC
+// KHÓA SỰ KIỆN NÚT ESC — luôn đóng đúng lớp modal đang NẰM TRÊN CÙNG trước (theo thứ tự z-index giảm dần),
+// rồi mới tới lớp bên dưới ở lần bấm ESC tiếp theo.
+function closeLargeTableModal() { document.getElementById('largeTableModal').style.display = 'none'; }
+
 window.addEventListener('keydown', function(event) {
     if (event.key === "Escape") { 
         const customModal = document.getElementById('customModal');
         if (customModal && customModal.style.display === 'flex') { closeCustomModal(); return; }
-        
+
+        const largeModal = document.getElementById('largeTableModal');
+        if (largeModal && largeModal.style.display === 'flex') { closeLargeTableModal(); return; }
+
         const wsModal = document.getElementById('workspaceModal'); 
         if (wsModal && wsModal.style.display === 'flex') closeWorkspace(); 
     }
