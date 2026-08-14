@@ -8,6 +8,178 @@ const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24
 const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
 const API_LUU_KETQUA = "https://script.google.com/macros/s/AKfycbziIyPUBk9lA6WnnI0W7U5xZ2X6_kIACnPlHLQPkuN0Bp6B776_pflfKsryfqfgBlRO/exec"; 
 
+// ==========================================
+// ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN BAN THẨM ĐỊNH)
+// Dùng CHUNG Google Client ID với "Web 1" (chỉ là định danh Google, không phải quyền hạn),
+// nhưng XÁC THỰC QUYỀN theo whitelist RIÊNG ("Thẩm định") — role gửi kèm là "thamdinh".
+// ==========================================
+let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
+let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
+let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
+let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist "Thẩm định"
+
+function isLoggedIn() {
+    return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
+}
+
+// Ẩn/hiện toàn bộ giao diện duyệt hồ sơ: chỉ mở khi đã đăng nhập VÀ được server xác nhận whitelist Thẩm định.
+function updateAppGate() {
+    const gate = document.getElementById('loginGate');
+    const app = document.getElementById('mainAppContent');
+    const loggedIn = isLoggedIn();
+    if (gate) gate.style.display = loggedIn ? 'none' : 'flex';
+    if (app) app.style.display = loggedIn ? '' : 'none';
+    // Chỉ tải dữ liệu khi vừa mở khoá xong lần đầu, tránh gọi API khi chưa có quyền.
+    if (loggedIn && !window.__dataFetchedOnce) {
+        window.__dataFetchedOnce = true;
+        fetchSheetData();
+    }
+}
+
+function updateAccountLabel() {
+    const label = document.getElementById('current-account-label');
+    const gateLabel = document.getElementById('gate-account-label');
+    const signoutBtn = document.getElementById('btnSignOut');
+    const loggedIn = isLoggedIn();
+
+    if (label) {
+        if (loggedIn) {
+            label.innerText = `👤 ${currentUserEmail}`;
+            label.style.color = "#2e7d32";
+        } else {
+            label.innerText = "⚠️ Chưa đăng nhập";
+            label.style.color = "#d32f2f";
+        }
+    }
+    if (gateLabel && !loggedIn) {
+        gateLabel.innerText = "";
+    }
+    if (signoutBtn) signoutBtn.style.display = loggedIn ? '' : 'none';
+
+    updateAppGate();
+}
+
+function clearLoginState() {
+    currentIdToken = null;
+    currentUserEmail = "";
+    currentTokenExp = 0;
+    isVerifiedByServer = false;
+    sessionStorage.removeItem('gg_id_token_td');
+    sessionStorage.removeItem('gg_user_email_td');
+    sessionStorage.removeItem('gg_token_exp_td');
+    sessionStorage.removeItem('gg_verified_td');
+}
+
+// Đăng xuất: xoá phiên, tắt auto-select của Google để không tự đăng nhập lại account cũ ngay lập tức.
+function signOutUser() {
+    clearLoginState();
+    try {
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.disableAutoSelect();
+        }
+    } catch (e) { /* bỏ qua nếu thư viện Google chưa sẵn sàng */ }
+    updateAccountLabel();
+}
+
+// Gọi lên Apps Script (dùng chung backend trunggian.gs qua WEB_APP_URL trong data_config.js)
+// để server tự xác minh chữ ký token + đối chiếu whitelist "Thẩm định" (role: "thamdinh").
+async function verifyLoginWithServer(idToken) {
+    const response = await fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ idToken: idToken, action: "checkLogin", role: "thamdinh" })
+    });
+    return await response.json();
+}
+
+async function handleGoogleLogin(response) {
+    // Báo ngay cho người dùng biết trang đang xử lý, tránh cảm giác "im lìm" trong lúc chờ server xác thực.
+    const gateLabel = document.getElementById('gate-account-label');
+    if (gateLabel) {
+        gateLabel.innerText = "⏳ Đang đăng nhập, vui lòng chờ...";
+        gateLabel.style.color = "#0288d1";
+    }
+
+    // ---- BƯỚC 1: Đọc thông tin từ token Google trả về ----
+    let idToken, email, exp;
+    try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        idToken = response.credential;
+        email = payload.email;
+        exp = payload.exp;
+    } catch (e) {
+        console.error("Lỗi đọc token Google:", e);
+        clearLoginState();
+        updateAccountLabel();
+        if (gateLabel) {
+            gateLabel.innerText = "❌ Không đọc được thông tin đăng nhập Google.";
+            gateLabel.style.color = "#d32f2f";
+        }
+        showAlert("Không đọc được thông tin đăng nhập Google, vui lòng thử lại.", "❌ LỖI ĐĂNG NHẬP", true);
+        return;
+    }
+
+    // ---- BƯỚC 2: Gửi token lên Apps Script để server xác minh (whitelist Thẩm định) ----
+    let result;
+    try {
+        result = await verifyLoginWithServer(idToken);
+    } catch (e) {
+        console.error("Lỗi kết nối khi xác thực đăng nhập:", e);
+        clearLoginState();
+        updateAccountLabel();
+        if (gateLabel) {
+            gateLabel.innerText = "🌐 Mất kết nối mạng, không xác thực được đăng nhập.";
+            gateLabel.style.color = "#d32f2f";
+        }
+        showAlert(`Không kết nối được tới máy chủ xác thực. Vui lòng kiểm tra mạng rồi thử đăng nhập lại.\n\n👉 Chi tiết lỗi: ${e}`, "❌ LỖI KẾT NỐI MẠNG", true);
+        return;
+    }
+
+    // ---- BƯỚC 3: Server đã phản hồi nhưng từ chối quyền truy cập ----
+    if (result.status !== "success") {
+        clearLoginState();
+        try {
+            if (window.google && google.accounts && google.accounts.id) {
+                google.accounts.id.disableAutoSelect();
+            }
+        } catch (e) { /* ignore */ }
+        updateAccountLabel();
+        if (gateLabel) {
+            gateLabel.innerText = "🚫 " + (result.message || "Tài khoản này chưa được cấp quyền thẩm định.");
+            gateLabel.style.color = "#d32f2f";
+        }
+        showAlert(result.message || "Tài khoản này chưa được cấp quyền thẩm định.", "🚫 KHÔNG CÓ QUYỀN TRUY CẬP", true);
+        return;
+    }
+
+    currentIdToken = idToken;
+    currentUserEmail = result.email || email;
+    currentTokenExp = exp;
+    isVerifiedByServer = true;
+
+    sessionStorage.setItem('gg_id_token_td', currentIdToken);
+    sessionStorage.setItem('gg_user_email_td', currentUserEmail);
+    sessionStorage.setItem('gg_token_exp_td', String(currentTokenExp));
+    sessionStorage.setItem('gg_verified_td', '1');
+    updateAccountLabel();
+}
+
+// Khôi phục phiên đăng nhập nếu còn hạn (token Google JWT sống ~1 giờ) VÀ đã từng được server xác nhận.
+window.addEventListener('DOMContentLoaded', () => {
+    const savedToken = sessionStorage.getItem('gg_id_token_td');
+    const savedExp = parseInt(sessionStorage.getItem('gg_token_exp_td') || "0", 10);
+    const savedVerified = sessionStorage.getItem('gg_verified_td') === '1';
+    if (savedToken && savedVerified && savedExp > Date.now() / 1000) {
+        currentIdToken = savedToken;
+        currentUserEmail = sessionStorage.getItem('gg_user_email_td') || "";
+        currentTokenExp = savedExp;
+        isVerifiedByServer = true;
+    } else {
+        clearLoginState();
+    }
+    updateAccountLabel();
+});
+
 const SUBJ_MAP = {
     "diem_toan": "TOÁN", "diem_vatli": "VẬT LÍ", "diem_hoahoc": "HÓA HỌC", "diem_sinhhoc": "SINH HỌC",
     "diem_nguvan": "NGỮ VĂN", "diem_lichsu": "LỊCH SỬ", "diem_dialy": "ĐỊA LÝ", "diem_tienganh": "TIẾNG ANH",
@@ -27,7 +199,8 @@ window.onload = () => {
     const dd = String(today.getDate()).padStart(2, '0');
     document.getElementById('filter-to').value = `${yyyy}-${mm}-${dd}`;
     
-    fetchSheetData();
+    // KHÔNG gọi fetchSheetData() ở đây nữa — updateAppGate() sẽ tự gọi ngay sau khi
+    // xác thực đăng nhập + quyền Thẩm định thành công (xem khối DOMContentLoaded phía trên).
     const crossCheckSelect = document.getElementById('ws-other-major');
     if (typeof DICT_NGANH !== 'undefined') {
         Object.keys(DICT_NGANH).forEach(nganh => crossCheckSelect.appendChild(new Option(nganh, nganh)));
@@ -112,7 +285,7 @@ async function fetchSheetData() {
     try {
         document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu...";
         
-        const response = await fetch(API_LAY_DU_LIEU);
+        const response = await fetch(API_LAY_DU_LIEU + "?idToken=" + encodeURIComponent(currentIdToken || ""));
         const result = await response.json();
 
         if (result.status === "success") {
@@ -423,7 +596,7 @@ async function syncToDaoTao() {
         });
 
         try {
-            const resp = await fetch(API_DAO_TAO, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const resp = await fetch(API_DAO_TAO + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") showAlert(`Bàn giao thành công! Có ${result.added} hồ sơ MỚI đã được gửi đi.`, "🎉 THÀNH CÔNG", false);
             else showAlert("Lỗi API máy chủ: \n" + result.message, "❌ LỖI", true);
@@ -634,7 +807,7 @@ async function triggerApprove() {
         }];
 
         try {
-            const resp = await fetch(API_TRUNG_TUYEN, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const resp = await fetch(API_TRUNG_TUYEN + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
                 showAlert(`Duyệt Trúng tuyển thành công!`, "🎉 THÀNH CÔNG", false); 
@@ -672,7 +845,7 @@ async function triggerMissing() {
         }];
 
         try {
-            const resp = await fetch(API_BAO_THIEU, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+            const resp = await fetch(API_BAO_THIEU + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
             const result = await resp.json();
             if(result.status === "success") { 
                 showAlert(`Đã gửi yêu cầu bổ sung [${hosoThieu}] cho thí sinh ${hoTen}.`, "✅ THÀNH CÔNG", false); 
@@ -708,7 +881,7 @@ async function triggerSaveToSheet() {
         payloadData["NGÀY CẬP NHẬT HỒ SƠ"] = new Date().toLocaleString('vi-VN');
 
         try {
-            const resp = await fetch(API_LUU_KETQUA, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
+            const resp = await fetch(API_LUU_KETQUA + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify([payloadData]) });
             const result = await resp.json();
             if(result.status === "success") {
                 if (result.skipped > 0) { 
@@ -761,7 +934,7 @@ async function processTranscriptImage(input) {
     if(btnReopen) btnReopen.style.display = "none"; 
 
     const sendToBackend = async (base64String, mimeType) => {
-        const payload = { imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
+        const payload = { idToken: currentIdToken, imageBase64: base64String, mimeType: mimeType, type: "bangdiem" };
 
         try {
             const response = await fetch(API_QUET_CCCD, {
@@ -856,7 +1029,7 @@ async function executeCompare() {
     
     document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white; opacity:0.5;" disabled>Đang xử lý...</button>`;
 
-    const payload = { type: "doisanh", nganh: nganhChon, transcript: currentTranscriptJSON };
+    const payload = { idToken: currentIdToken, type: "doisanh", nganh: nganhChon, transcript: currentTranscriptJSON };
 
     try {
         const response = await fetch(API_QUET_CCCD, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
@@ -967,6 +1140,7 @@ async function exportToTemplate() {
     btn.innerText = "⏳ Đang tạo Excel..."; btn.disabled = true; btn.style.opacity = "0.7";
 
     const payload = {
+        idToken: currentIdToken,
         type: "exportTemplate",
         mappingData: mappingData,
         compareMatched: currentCompareResultJSON ? currentCompareResultJSON.matched : [],
