@@ -115,10 +115,12 @@
 
     <div class="action-bar">
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <button class="btn-select-toggle" id="btnToggleSelect" onclick="toggleSelectMode()">☑️ Chọn</button>
-            <div id="selectAllBar" style="display:none; gap:8px;">
-                <button class="btn-reset" style="padding:6px 10px;" onclick="selectAllVisible()">✅ Chọn tất cả</button>
-                <button class="btn-reset" style="padding:6px 10px;" onclick="deselectAllVisible()">◻️ Bỏ chọn tất cả</button>
+            <button class="btn-select-toggle" id="btnSelectAllToggle" onclick="toggleSelectAll()" title="Chọn hết">☐</button>
+            <div id="batchActionButtons">
+                <button class="btn-batch-icon pass" onclick="openBatchSummary('duyet')" title="Duyệt trúng tuyển các hồ sơ đã chọn">✅</button>
+                <button class="btn-batch-icon missing" onclick="openBatchSummary('baothieu')" title="Yêu cầu bổ sung hồ sơ cho các hồ sơ đã chọn">⚠️</button>
+                <button class="btn-batch-icon save" onclick="openBatchSummary('luucsdl')" title="Lưu vào CSDL các hồ sơ đã chọn">💾</button>
+                <button class="btn-batch-icon checked" onclick="toggleCheckedForSelected()" title="Đánh dấu Checked các hồ sơ đã chọn">📌</button>
             </div>
         </div>
         <!-- CỤM NÚT BẤM ĐÃ PHỤC HỒI NÚT ĐÀO TẠO -->
@@ -126,14 +128,6 @@
             <button class="btn-export" onclick="exportExcel()">📥 Xuất Excel</button>
             <button class="btn-export" style="background:#28a745; border-color:#218838;" onclick="syncToDaoTao()" id="btnSyncDaoTao">🚀 Cập nhật cho Đào tạo</button>
         </div>
-    </div>
-
-    <div id="batchActionBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; background:#fff3e0; border:1px solid #ffb74d; border-radius:4px; padding:8px 12px; margin-bottom:10px;">
-        <span style="font-weight:bold; color:#e65100; font-size:12px; white-space:nowrap;">Đã chọn <span id="batchSelectedCount">0</span> hồ sơ:</span>
-        <button class="btn-action pass" onclick="openBatchSummary('duyet')">✅ Duyệt</button>
-        <button class="btn-action missing" onclick="openBatchSummary('baothieu')">⚠️ Yêu cầu bổ sung HS</button>
-        <button class="btn-action save" onclick="openBatchSummary('luucsdl')">💾 Lưu vào CSDL</button>
-        <button class="btn-action" style="background:#0288d1;" onclick="toggleCheckedForSelected()">📌 Checked</button>
     </div>
 
     <div class="table-wrapper" id="tableWrapper">
@@ -147,7 +141,7 @@
                     <th style="width: 100px;">CĂN CƯỚC</th>
                     <th style="width: 160px;">HỌ VÀ TÊN</th>
                     <th style="width: 160px;">NGÀNH ĐÀO TẠO</th>
-                    <th style="width: 160px;">ĐỐI TƯỢNG</th>
+                    <th style="width: 145px;">ĐỐI TƯỢNG</th>
                     <th style="width: 50px; text-align: center;">ĐIỂM / TỔ HỢP</th>
                     <th>TRẠNG THÁI HỒ SƠ</th>
                     <th style="width: 100px; text-align: center;">THẨM ĐỊNH</th>
@@ -175,7 +169,7 @@
     </div>
 </div>
 
-<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037 &nbsp;|&nbsp; <span id="btnOpenFeedback" onclick="openFeedbackModal()" style="cursor:pointer; text-decoration:underline; font: inherit; color: inherit;">📩 Send feedback</span></div>
+<div class="copyright">© Liên hệ hỗ trợ: Nguyễn Tiến Thịnh _ 0985-822037 &nbsp;|&nbsp; <span id="btnOpenFeedback" onclick="openFeedbackModal()" style="cursor:pointer; text-decoration:underline; font: inherit; color: inherit;">📩 Gửi phản hồi lỗi trong quá trình sử dụng</span></div>
 
 <!-- ============================================== -->
 <!-- WORKSPACE MODAL (BẢNG THẨM ĐỊNH CHI TIẾT) -->
@@ -280,7 +274,7 @@
 <div id="feedbackModal" class="workspace-overlay" style="z-index: 100050; display: none;">
     <div class="workspace-modal" style="width: 90%; max-width: 420px; height: auto;">
         <div class="ws-header" style="font-size: 14px; background: #6a1b9a;">
-            <span>📩 Send Feedback</span>
+            <span>📩 Gửi phản hồi nếu có lỗi</span>
             <span style="cursor:pointer;" onclick="closeFeedbackModal()">✖</span>
         </div>
         <div id="feedbackBody" class="ws-body" style="padding: 18px 15px;"></div>
