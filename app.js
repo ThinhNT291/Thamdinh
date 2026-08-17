@@ -1,7 +1,7 @@
 // ==========================================
 // CẤU HÌNH API VÀ BIẾN TOÀN CỤC
 // ==========================================
-const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbycJi3rk9OBLRQt79jYZb-VCawHB1NeIOlIUD-3E6fjPrY_2WvDXNP50ZikYidHAoUNyw/exec";
+const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
 const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
@@ -437,7 +437,6 @@ let pageSize = 10; let currentPage = 1; // Phân trang danh sách hồ sơ
 // ==========================================
 // CHỌN NHIỀU HỒ SƠ (BATCH SELECT) — Duyệt / Y.c bổ sung / Lưu CSDL hàng loạt
 // ==========================================
-let selectMode = false;
 let selectedKeys = new Set();
 // "Checked" chỉ để đánh dấu tạm trong phiên làm việc (đã xem qua, chờ xử lý sau) — dùng sessionStorage
 // nên tự mất khi đóng tab/trình duyệt, không lưu vĩnh viễn, không gửi lên server.
@@ -448,15 +447,10 @@ function persistCheckedKeys() {
     try { sessionStorage.setItem('td_checked_keys', JSON.stringify([...checkedKeys])); } catch (e) {}
 }
 
-function toggleSelectMode() {
-    selectMode = !selectMode;
-    selectedKeys.clear();
-    document.getElementById('tableWrapper').classList.toggle('select-mode', selectMode);
-    document.getElementById('btnToggleSelect').classList.toggle('active', selectMode);
-    document.getElementById('btnToggleSelect').innerText = selectMode ? "✖ Thoát chế độ chọn" : "☑️ Chọn";
-    document.getElementById('selectAllBar').style.display = selectMode ? 'flex' : 'none';
-    renderTable();
-    updateBatchBar();
+// Nút gộp: nếu đang có hồ sơ được chọn (dù chọn hết hay chọn dở) -> bỏ chọn hết;
+// nếu chưa chọn gì -> chọn hết danh sách đang hiển thị (theo bộ lọc, không chỉ trang hiện tại).
+function toggleSelectAll() {
+    if (selectedKeys.size > 0) deselectAllVisible(); else selectAllVisible();
 }
 
 function toggleRowSelectByIndex(idx, checked) {
@@ -480,10 +474,17 @@ function deselectAllVisible() {
 }
 
 function updateBatchBar() {
-    const bar = document.getElementById('batchActionBar');
     const count = selectedKeys.size;
-    document.getElementById('batchSelectedCount').innerText = count;
-    bar.style.display = (selectMode && count > 0) ? 'flex' : 'none';
+
+    // Cụm 4 nút thao tác hàng loạt: chỉ hiện khi có ít nhất 1 hồ sơ được chọn.
+    const batchBtns = document.getElementById('batchActionButtons');
+    batchBtns.style.display = count > 0 ? 'flex' : 'none';
+
+    // Nút chọn hết/bỏ chọn hết: đổi icon + hiện số lượng đã chọn trong ngoặc.
+    const toggleBtn = document.getElementById('btnSelectAllToggle');
+    toggleBtn.innerHTML = count > 0 ? `☑️ (${count})` : '☐';
+    toggleBtn.title = count > 0 ? 'Bỏ chọn hết' : 'Chọn hết';
+    toggleBtn.classList.toggle('active', count > 0);
 }
 
 // Tick "Checked" cho các hồ sơ đang được chọn: nếu tất cả đã Checked -> bỏ Checked hàng loạt,
@@ -1456,16 +1457,57 @@ async function executeBatchAction(type, rows) {
     try {
         const resp = await fetch(apiUrl + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
         const result = await resp.json();
-        closeLargeTableModal();
 
-        if (result.status === "success") {
+        if (result.status !== "success") {
+            closeLargeTableModal();
+            showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true);
+            return;
+        }
+
+        const results = Array.isArray(result.results) ? result.results : null;
+
+        if (results) {
+            // === Có results[] chi tiết per-record: cập nhật state theo TỪNG người, không gộp cả batch ===
+            results.forEach(r => {
+                const matchRow = rows.find(row => {
+                    const cccd = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
+                    return cccd === r.cccd;
+                });
+                if (!matchRow) return;
+                const key = getRowKey(matchRow);
+
+                let isDone = false; // đã thực sự xử lý xong (không cần giữ lại để retry)
+                if (type === 'duyet') {
+                    if (r.status === 'success' || r.status === 'warning') { matchRow._appState = "Đã duyệt"; isDone = true; }
+                } else if (type === 'baothieu') {
+                    if (r.status === 'success' || r.status === 'warning') { matchRow._appState = "Đã báo thiếu"; isDone = true; }
+                } else if (type === 'luucsdl') {
+                    if (r.status === 'added' || r.status === 'updated' || r.status === 'skipped') { matchRow._saved = true; isDone = true; }
+                }
+
+                if (isDone) {
+                    selectedKeys.delete(key);
+                    checkedKeys.delete(key); // hồ sơ đã xử lý xong -> tự bỏ trạng thái Checked tạm
+                }
+                // hồ sơ status === 'error' (hoặc luucsdl 'error') -> CỐ Ý giữ nguyên selected/checked để dễ chọn lại và thử lần nữa
+            });
+            persistCheckedKeys();
+
+            if (type === 'duyet' && result.pdfUrl) window.open(result.pdfUrl, '_blank');
+
+            renderTable();
+            updateBatchBar();
+            showBatchResultModal(type, results); // tái dùng largeTableModal đang mở, KHÔNG đóng nó lại
+        } else {
+            // === Fallback: API cũ chưa trả results[] -> giữ hành vi cũ (coi cả batch như nhau) ===
+            closeLargeTableModal();
             rows.forEach(row => {
                 const key = getRowKey(row);
                 if (type === 'duyet') row._appState = "Đã duyệt";
                 else if (type === 'baothieu') row._appState = "Đã báo thiếu";
                 else if (type === 'luucsdl') row._saved = true;
                 selectedKeys.delete(key);
-                checkedKeys.delete(key); // hồ sơ đã xử lý xong -> tự bỏ trạng thái Checked tạm
+                checkedKeys.delete(key);
             });
             persistCheckedKeys();
 
@@ -1479,13 +1521,76 @@ async function executeBatchAction(type, rows) {
 
             renderTable();
             updateBatchBar();
-        } else {
-            showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true);
         }
     } catch (e) {
         closeLargeTableModal();
         showAlert("Lỗi mạng: " + e, "❌ LỖI", true);
     }
+}
+
+// ==========================================
+// MODAL KẾT QUẢ CHI TIẾT BATCH (đọc result.results[] từ GAS)
+// Tái dùng largeTableModal — gọi sau khi executeBatchAction nhận được results[]
+// ==========================================
+function showBatchResultModal(type, results) {
+    const titleMap = {
+        duyet: "✅ KẾT QUẢ DUYỆT TRÚNG TUYỂN HÀNG LOẠT",
+        baothieu: "⚠️ KẾT QUẢ YÊU CẦU BỔ SUNG HỒ SƠ HÀNG LOẠT",
+        luucsdl: "💾 KẾT QUẢ LƯU VÀO CSDL HÀNG LOẠT"
+    };
+    document.getElementById('largeModalTitle').innerText = titleMap[type] || "KẾT QUẢ XỬ LÝ HÀNG LOẠT";
+
+    // Bảng ánh xạ status -> nhãn/màu hiển thị, khác nhau giữa luucsdl và duyet/baothieu
+    const badgeMap = (type === 'luucsdl')
+        ? {
+            added:   { label: "Đã thêm mới", color: "#00897b" },
+            updated: { label: "Đã cập nhật", color: "#0288d1" },
+            skipped: { label: "Bỏ qua (trùng)", color: "#757575" },
+            error:   { label: "Lỗi", color: "#c62828" }
+          }
+        : {
+            success: { label: "Thành công", color: "#00897b" },
+            warning: { label: "Cảnh báo", color: "#ef6c00" },
+            error:   { label: "Lỗi", color: "#c62828" }
+          };
+
+    const counts = {};
+    results.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
+    const summaryLine = Object.keys(badgeMap)
+        .filter(k => counts[k])
+        .map(k => `<b style="color:${badgeMap[k].color};">${counts[k]} ${badgeMap[k].label.toLowerCase()}</b>`)
+        .join(' &nbsp;·&nbsp; ');
+
+    const rowsHtml = results.map((r, i) => {
+        const bm = badgeMap[r.status] || { label: r.status || '?', color: "#757575" };
+        const badge = `<span class="badge" style="background:${bm.color};color:#fff;">${bm.label}</span>`;
+        return `<tr>
+            <td style="text-align:center;">${i + 1}</td>
+            <td>${escapeHtml(r.hoTen || '')}</td>
+            <td>${escapeHtml(r.cccd || '')}</td>
+            <td style="text-align:center;">${badge}</td>
+            <td style="font-size:12px; color:#555;">${escapeHtml(r.message || '')}</td>
+        </tr>`;
+    }).join('');
+
+    const noteHtml = (type === 'luucsdl')
+        ? (counts.error ? `<div style="background:#ffebee; border:1px dashed #ef5350; padding:8px 10px; border-radius:4px; margin-top:10px; font-size:12px; color:#c62828;">❌ Các hồ sơ "Lỗi" CHƯA được ghi vào CSDL — vẫn đang được giữ chọn (tick) để bạn có thể thử "Lưu vào CSDL" lại.</div>` : "")
+        : (counts.warning ? `<div style="background:#fff3e0; border:1px dashed #ffb74d; padding:8px 10px; border-radius:4px; margin-top:10px; font-size:12px; color:#e65100;">⚠️ Các hồ sơ "Cảnh báo": PDF đã được tạo bình thường (đã phát cho thí sinh), nhưng hệ thống KHÔNG ghi được trạng thái vào sheet theo dõi. Vui lòng vào sheet theo dõi kiểm tra và cập nhật thủ công cho các trường hợp này.</div>` : "")
+          + (counts.error ? `<div style="background:#ffebee; border:1px dashed #ef5350; padding:8px 10px; border-radius:4px; margin-top:10px; font-size:12px; color:#c62828;">❌ Các hồ sơ "Lỗi" CHƯA có PDF/chưa xử lý — vẫn đang được giữ chọn (tick) để bạn có thể thử lại.</div>` : "");
+
+    document.getElementById('largeModalContent').innerHTML = `
+        <div style="margin-bottom:10px; font-size:13px;">${summaryLine}</div>
+        <table class="batch-summary-table">
+            <thead><tr><th>STT</th><th>Họ tên</th><th>CCCD</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        ${noteHtml}
+    `;
+
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" style="background-color:#6c757d; color:white;" onclick="closeLargeTableModal()">Đóng lại</button>
+    `;
+    document.getElementById('largeTableModal').style.display = 'flex';
 }
 
 // KHÓA SỰ KIỆN NÚT ESC — luôn đóng đúng lớp modal đang NẰM TRÊN CÙNG trước (theo thứ tự z-index giảm dần),
