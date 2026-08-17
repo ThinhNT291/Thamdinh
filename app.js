@@ -23,6 +23,118 @@ function isLoggedIn() {
     return !!currentIdToken && isVerifiedByServer && (Date.now() / 1000) < currentTokenExp;
 }
 
+// ==========================================
+// GIÁM SÁT PHIÊN ĐĂNG NHẬP:
+//  - Tự động đăng xuất nếu không có thao tác gì trong 30 phút (kể cả token còn hạn).
+//  - Thử gia hạn NGẦM (im lặng, không làm phiền người dùng) khi token sắp hết hạn (còn ~10 phút).
+//  - Nếu gia hạn ngầm thất bại, hiện banner dự phòng để người dùng chủ động bấm gia hạn (còn ~5 phút).
+// ==========================================
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;        // 30 phút không thao tác -> tự đăng xuất
+const TOKEN_REFRESH_LEAD_MS = 10 * 60 * 1000;  // Còn < 10 phút thì thử gia hạn ngầm
+const TOKEN_BANNER_LEAD_MS = 5 * 60 * 1000;    // Còn < 5 phút mà chưa gia hạn được thì hiện banner dự phòng
+let lastActivityAt = Date.now();
+let __isSilentRefreshFlow = false;
+let __silentRefreshAttemptedForExp = 0; // tránh gọi prompt() lặp lại nhiều lần cho cùng 1 token
+
+// Ghi nhận mọi thao tác của người dùng (chuột, bàn phím, chạm, cuộn) để tính thời gian nhàn rỗi.
+['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+    document.addEventListener(evt, () => { lastActivityAt = Date.now(); }, { passive: true });
+});
+
+function sessionMonitorTick() {
+    if (!isLoggedIn()) return; // chỉ giám sát khi đang ở trong phiên đăng nhập hợp lệ
+    const now = Date.now();
+
+    // 1) Không thao tác quá 30 phút -> tự động đăng xuất, đẩy về màn hình đăng nhập
+    if (now - lastActivityAt >= IDLE_TIMEOUT_MS) {
+        forceSessionTimeout("⏰ Bạn đã không thao tác trong 30 phút. Phiên làm việc đã tự động kết thúc, vui lòng đăng nhập lại.");
+        return;
+    }
+
+    // 2) Token đã thực sự hết hạn (dù vẫn đang thao tác) -> đăng xuất ngay
+    const msLeft = (currentTokenExp * 1000) - now;
+    if (msLeft <= 0) {
+        forceSessionTimeout("⏰ Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại để tiếp tục.");
+        return;
+    }
+
+    // 3) Sắp hết hạn (còn < 10 phút) -> âm thầm thử xin token mới, không làm phiền người dùng.
+    //    Chỉ thử 1 lần cho mỗi token để tránh spam hộp thoại chọn tài khoản Google.
+    if (msLeft <= TOKEN_REFRESH_LEAD_MS && __silentRefreshAttemptedForExp !== currentTokenExp) {
+        __silentRefreshAttemptedForExp = currentTokenExp;
+        attemptSilentTokenRefresh();
+    }
+
+    // 4) Vẫn còn dưới 5 phút (nghĩa là bước gia hạn ngầm chưa thành công) -> hiện banner dự phòng
+    if (msLeft <= TOKEN_BANNER_LEAD_MS) {
+        showSessionExpiryBanner(msLeft);
+    } else {
+        hideSessionExpiryBanner();
+    }
+}
+setInterval(sessionMonitorTick, 20 * 1000); // kiểm tra mỗi 20 giây
+
+// Bắt buộc kết thúc phiên: dọn trạng thái đăng nhập + quay lại màn hình đăng nhập + báo cho người dùng.
+function forceSessionTimeout(message) {
+    hideSessionExpiryBanner();
+    clearLoginState();
+    try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) { /* ignore */ }
+    updateAccountLabel();
+    showAlert(message, "🔒 PHIÊN LÀM VIỆC KẾT THÚC", true);
+}
+
+// Thử gia hạn phiên NGẦM: gọi lại hộp thoại chọn tài khoản Google.
+// Nếu trình duyệt vẫn còn phiên Google hợp lệ, việc này có thể tự hoàn tất mà không cần người dùng thao tác gì;
+// callback handleGoogleLogin() sẽ nhận diện đây là request ngầm (__isSilentRefreshFlow) và không hiện lỗi nếu thất bại.
+function attemptSilentTokenRefresh() {
+    try {
+        __isSilentRefreshFlow = true;
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.prompt();
+        } else {
+            __isSilentRefreshFlow = false;
+        }
+    } catch (e) {
+        console.warn("Gia hạn phiên ngầm thất bại:", e);
+        __isSilentRefreshFlow = false;
+    }
+}
+
+// Banner dự phòng: hiện khi gia hạn ngầm chưa thành công và token sắp hết hạn (< 5 phút),
+// để người dùng chủ động bấm gia hạn thay vì bị đăng xuất đột ngột.
+function showSessionExpiryBanner(msLeft) {
+    let banner = document.getElementById('session-expiry-banner');
+    const minutesLeft = Math.max(1, Math.ceil(msLeft / 60000));
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'session-expiry-banner';
+        banner.style.cssText = "position:fixed; top:0; left:0; width:100%; z-index:9998; background:#fff3e0; border-bottom:2px solid #f57c00; color:#e65100; padding:10px 16px; display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; font-size:13px; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.15);";
+        document.body.prepend(banner);
+    }
+    banner.innerHTML = `⏳ Phiên đăng nhập sắp hết hạn (còn khoảng ${minutesLeft} phút).
+        <button type="button" onclick="manualExtendSession()" style="background:#f57c00; color:#fff; border:none; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;">🔄 Gia hạn phiên đăng nhập</button>`;
+}
+
+function hideSessionExpiryBanner() {
+    const banner = document.getElementById('session-expiry-banner');
+    if (banner) banner.remove();
+}
+
+// Người dùng chủ động bấm "Gia hạn" trên banner dự phòng: mở lại hộp thoại chọn tài khoản Google.
+// Đây KHÔNG phải request ngầm, nên nếu thất bại vẫn báo lỗi bình thường cho người dùng biết.
+function manualExtendSession() {
+    __isSilentRefreshFlow = false;
+    try {
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.prompt();
+        } else {
+            showAlert("Không thể khởi tạo lại đăng nhập Google, vui lòng tải lại trang.", "❌ LỖI", true);
+        }
+    } catch (e) {
+        showAlert("Không thể gia hạn phiên: " + e, "❌ LỖI", true);
+    }
+}
+
 document.getElementById('btnRequestAccess')?.addEventListener('click', () => {
     __isRequestAccessFlow = true;
     google.accounts.id.prompt(); // Bật lại hộp thoại chọn tài khoản Google
@@ -147,6 +259,7 @@ function clearLoginState() {
 // Đăng xuất: xoá phiên, tắt auto-select của Google để không tự đăng nhập lại account cũ ngay lập tức.
 function signOutUser() {
     closeAccountMenu();
+    hideSessionExpiryBanner();
     clearLoginState();
     try {
         if (window.google && google.accounts && google.accounts.id) {
@@ -172,9 +285,14 @@ async function handleGoogleLogin(response) {
         __isRequestAccessFlow = false;
         processAccessRequest(response.credential);
         return;}
+    // Nếu đây là 1 lần thử gia hạn phiên NGẦM (do sessionMonitorTick() tự gọi), không được làm phiền
+    // người dùng bằng showAlert() nếu thất bại — chỉ log ra console, banner dự phòng vẫn còn đó.
+    const wasSilent = __isSilentRefreshFlow;
+    __isSilentRefreshFlow = false;
+
     // Báo ngay cho người dùng biết trang đang xử lý, tránh cảm giác "im lìm" trong lúc chờ server xác thực.
     const gateLabel = document.getElementById('gate-account-label');
-    if (gateLabel) {
+    if (gateLabel && !wasSilent) {
         gateLabel.innerText = "⏳ Đang đăng nhập, vui lòng chờ...";
         gateLabel.style.color = "#0288d1";
     }
@@ -189,6 +307,7 @@ async function handleGoogleLogin(response) {
         exp = payload.exp;
     } catch (e) {
         console.error("Lỗi đọc token Google:", e);
+        if (wasSilent) return; // gia hạn ngầm thất bại: giữ nguyên phiên cũ (nếu còn hạn), không đăng xuất, không báo lỗi
         clearLoginState();
         updateAccountLabel();
         if (gateLabel) {
@@ -205,6 +324,7 @@ async function handleGoogleLogin(response) {
         result = await verifyLoginWithServer(idToken);
     } catch (e) {
         console.error("Lỗi kết nối khi xác thực đăng nhập:", e);
+        if (wasSilent) return; // gia hạn ngầm thất bại vì lỗi mạng: giữ nguyên phiên cũ, banner dự phòng vẫn hiển thị
         clearLoginState();
         updateAccountLabel();
         if (gateLabel) {
@@ -217,6 +337,7 @@ async function handleGoogleLogin(response) {
 
     // ---- BƯỚC 3: Server đã phản hồi nhưng từ chối quyền truy cập ----
     if (result.status !== "success") {
+        if (wasSilent) return; // gia hạn ngầm bị từ chối: KHÔNG tự đăng xuất giữa chừng, để banner dự phòng cho người dùng chủ động gia hạn/đăng xuất
         clearLoginState();
         try {
             if (window.google && google.accounts && google.accounts.id) {
@@ -243,6 +364,12 @@ async function handleGoogleLogin(response) {
     sessionStorage.setItem('gg_user_name_td', currentUserName);
     sessionStorage.setItem('gg_token_exp_td', String(currentTokenExp));
     sessionStorage.setItem('gg_verified_td', '1');
+
+    // Đăng nhập/gia hạn thành công: reset đồng hồ nhàn rỗi + cho phép thử gia hạn ngầm lại cho token mới + ẩn banner dự phòng.
+    lastActivityAt = Date.now();
+    __silentRefreshAttemptedForExp = 0;
+    hideSessionExpiryBanner();
+
     updateAccountLabel();
 }
 
@@ -283,6 +410,7 @@ window.onload = () => {
     const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     document.getElementById('filter-from').value = fmtDate(sevenDaysAgo);
     document.getElementById('filter-to').value = fmtDate(today);
+    document.getElementById('kpi-year').innerText = today.getFullYear();
 
     // KHÔNG gọi fetchSheetData() ở đây nữa — updateAppGate() sẽ tự gọi ngay sau khi
     // xác thực đăng nhập + quyền Thẩm định thành công (xem khối DOMContentLoaded phía trên).
@@ -580,6 +708,8 @@ function applyFilters() {
     
     document.getElementById('kpi-total').innerText = filteredData.length;
     document.getElementById('kpi-docs').innerText = filteredData.filter(r => getMissingDocs(r).length === 0).length;
+    document.getElementById('kpi-missing').innerText = filteredData.filter(r => getMissingDocs(r).length > 0).length;
+    document.getElementById('kpi-approved').innerText = filteredData.filter(r => r._appState === "Đã duyệt").length;
     document.getElementById('row-count').innerText = filteredData.length;
     currentPage = 1; // Mỗi lần lọc/sắp xếp lại đều quay về trang đầu tiên
     renderTable(); 
