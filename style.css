@@ -58,6 +58,19 @@ tr:hover { background: #f1f8f8; }
 .info-val.highlight { color: #d84315; font-size: 14px; }
 .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
 .link-card:hover { background: #b2dfdb; }
+
+/* THÔNG TIN THÍ SINH — 2 bảng nhãn/nội dung song song */
+.info-tables-wrap { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+.info-table-box { flex: 1 1 320px; min-width: 280px; background: #fff; border: 1px solid #d0e8e6; border-radius: 4px; overflow: hidden; }
+.info-table-box table { width: 100%; border-collapse: collapse; }
+.info-table-box td { padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: middle; }
+.info-table-box tr:last-child td { border-bottom: none; }
+.info-table-box td.info-label-cell { width: 42%; font-weight: bold; color: #666; text-transform: uppercase; font-size: 10.5px; background: #f8fbfb; white-space: nowrap; }
+.info-table-box td.info-val-cell { color: #111; font-weight: 600; }
+.info-table-box td.info-val-cell.highlight { color: #d84315; }
+.info-table-box tr.link-row { cursor: pointer; transition: 0.2s; }
+.info-table-box tr.link-row td.info-val-cell { color: #00796b; font-weight: bold; }
+.info-table-box tr.link-row:hover { background: #e0f2f1; }
 .combo-table { width: max-content !important; min-width: 50%; margin: 0 auto; border-collapse: collapse; background: #fff; }
 .combo-table th, .combo-table td { border: 1px solid #e0e0e0; padding: 3px 10px; text-align: center; font-size: 11px; white-space: nowrap; }
 .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
