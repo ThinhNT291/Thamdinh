@@ -140,9 +140,22 @@ document.getElementById('btnRequestAccess')?.addEventListener('click', () => {
     google.accounts.id.prompt(); // Bật lại hộp thoại chọn tài khoản Google
 });
 
+// ---- Giải mã payload JWT ĐÚNG CHUẨN UTF-8 ----
+// atob() thuần chỉ trả về chuỗi byte kiểu Latin1, trong khi payload JWT là JSON UTF-8.
+// Nếu JSON.parse(atob(...)) trực tiếp, các ký tự có dấu tiếng Việt trong claim "name"
+// (vd: "Lê Hữu Bắc") sẽ bị vỡ (mojibake) — đây là nguyên nhân tên tài khoản hiển thị sai font/lỗi Unicode.
+// Cách khắc phục: chuyển chuỗi byte đó thành mảng byte thật rồi decode lại bằng TextDecoder('utf-8').
+function decodeJwtPayload(jwt) {
+    const base64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const binaryStr = atob(base64);
+    const bytes = Uint8Array.from(binaryStr, c => c.charCodeAt(0));
+    const jsonStr = new TextDecoder('utf-8').decode(bytes);
+    return JSON.parse(jsonStr);
+}
+
 // Giải mã email từ JWT phía client CHỈ để hiển thị xác nhận — server vẫn tự xác minh lại token thật khi gửi
 function decodeJwtEmail(jwt) {
-    try { return JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email; }
+    try { return decodeJwtPayload(jwt).email; }
     catch(e) { return null; }
 }
 
@@ -300,7 +313,7 @@ async function handleGoogleLogin(response) {
     // ---- BƯỚC 1: Đọc thông tin từ token Google trả về ----
     let idToken, email, name, exp;
     try {
-        const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const payload = decodeJwtPayload(response.credential);
         idToken = response.credential;
         email = payload.email;
         name = payload.name || payload.email;
@@ -555,6 +568,21 @@ function getVal(row, keys) {
     return "";
 }
 
+// ==========================================
+// CHỐNG XSS: dữ liệu hồ sơ (họ tên, ngành, CCCD, điểm...) đến từ Google Sheet mà nguồn gốc
+// là DỮ LIỆU THÍ SINH TỰ NHẬP qua form đăng ký — KHÔNG được tin tưởng.
+// Mọi giá trị lấy qua getVal()/generateMaSV()/getBestScoreText() PHẢI escape trước khi
+// nhét vào innerHTML, nếu không thí sinh có thể chèn <script>/onerror=... để chạy mã độc
+// ngay trong trình duyệt của người thẩm định đang đăng nhập (đánh cắp token, thao túng dữ liệu).
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function getMissingDocs(row) {
     if (typeof DICT_HO_SO === 'undefined') return [];
     const dtDauVao = getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]);
@@ -749,13 +777,13 @@ function renderTable() {
 
         tr.innerHTML = `
             <td style="text-align: center;">${index + 1}</td>
-            <td style="text-align: center;"><b>${getVal(row, ["TIME"]).split(' ')[0]}</b></td>
-            <td style="color:#d84315; font-weight:bold;">${generateMaSV(row)}</td>
-            <td><b>${cccdStr}</b></td>
-            <td><b>${getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"])}</b></td>
-            <td>${getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"])}</td>
-            <td>${getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"])}</td>
-            <td style="text-align: center;">${getBestScoreText(row)}</td>
+            <td style="text-align: center;"><b>${escapeHtml(getVal(row, ["TIME"]).split(' ')[0])}</b></td>
+            <td style="color:#d84315; font-weight:bold;">${escapeHtml(generateMaSV(row))}</td>
+            <td><b>${escapeHtml(cccdStr)}</b></td>
+            <td><b>${escapeHtml(getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]))}</b></td>
+            <td>${escapeHtml(getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]))}</td>
+            <td>${escapeHtml(getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]))}</td>
+            <td style="text-align: center;">${escapeHtml(getBestScoreText(row))}</td>
             <td>${badge}</td>
             <td style="text-align: center;"><button class="${btnClass}" onclick="openWorkspace(${index})">${btnText}</button></td>
         `;
@@ -1028,7 +1056,7 @@ function calculateAndRenderScores(row, targetNganh) {
 
         summaryHTML = `
             <div class="info-card"><span class="info-label">Điểm cộng/ Điểm ưu tiên</span><span class="info-val">${diemCong}đ / ${uTienBanDau.toFixed(2)}đ</span></div>
-            <div class="info-card"><span class="info-label">${dtbLabel}</span><span class="info-val highlight">${dtbVal}</span></div>
+            <div class="info-card"><span class="info-label">${dtbLabel}</span><span class="info-val highlight">${escapeHtml(dtbVal)}</span></div>
             <div class="info-card" style="background:#e8f5e9; border-color:#81c784;"><span class="info-label" style="color:#2e7d32">Điểm Chuẩn</span><span class="info-val" style="font-size:15px; color:#2e7d32;">${diemChuanText}</span></div>
         `;
     }
@@ -1375,7 +1403,7 @@ async function executeCompare() {
     if (!nganhChon) { alert("⚠️ Chưa có dữ liệu ngành đào tạo!"); return; }
 
     const contentDiv = document.getElementById('largeModalContent');
-    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ ĐANG ĐỐI SÁNH TÍN CHỈ VỚI NGÀNH [${nganhChon.toUpperCase()}]...</h3><p style="text-align:center; font-style:italic;">Không đóng hoặc refresh trang web...</p>`;
+    contentDiv.innerHTML = `<h3 style="text-align:center; color:#f57c00;">⏳ ĐANG ĐỐI SÁNH TÍN CHỈ VỚI NGÀNH [${escapeHtml(nganhChon.toUpperCase())}]...</h3><p style="text-align:center; font-style:italic;">Không đóng hoặc refresh trang web...</p>`;
     
     document.getElementById('largeModalFooter').innerHTML = `<button class="btn-modal-cancel" style="background-color: #6c757d; color: white; opacity:0.5;" disabled>Đang xử lý...</button>`;
 
