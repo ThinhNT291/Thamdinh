@@ -1,7 +1,9 @@
 // ==========================================
 // CẤU HÌNH API VÀ BIẾN TOÀN CỤC
 // ==========================================
-const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
+//const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
+
+const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbycJi3rk9OBLRQt79jYZb-VCawHB1NeIOlIUD-3E6fjPrY_2WvDXNP50ZikYidHAoUNyw/exec";
 const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
