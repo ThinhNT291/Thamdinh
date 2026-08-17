@@ -25,7 +25,12 @@ h1 { color: var(--primary); margin-top: 0; font-size: 20px; border-bottom: 2px s
 /* BẢNG CHÍNH (Đã tinh chỉnh kích thước và khoảng cách siêu chuẩn) */
 /* ========================================================= */
 .table-wrapper { max-height: 680px; overflow-y: auto; overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 4px; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1350px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+/* min-width 1350px CHỈ áp cho bảng danh sách chính (nhiều cột, cần cuộn ngang) — trước đây đặt trên
+   selector "table" chung nên 2 bảng nhỏ trong modal thẩm định (.info-table-box table) cũng bị ép rộng
+   1350px, khiến cột giá trị (58%) bị đẩy ra ngoài vùng nhìn thấy rồi bị .info-table-box{overflow:hidden}
+   cắt mất -> nhìn như cột dữ liệu trống dù JS đã gán giá trị đúng. */
+.table-wrapper table { min-width: 1350px; }
 th { position: sticky; top: 0; background: #e0f2f1; color: #006666; font-weight: 700; padding: 6px 4px; text-align: left; border-bottom: 2px solid #b2ebf2; z-index: 10; white-space: nowrap; }
 td { padding: 6px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
 tr:hover { background: #f1f8f8; }
