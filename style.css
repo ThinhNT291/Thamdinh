@@ -24,19 +24,26 @@ h1 { color: var(--primary); margin-top: 0; font-size: 20px; border-bottom: 2px s
 /* ========================================================= */
 /* CHỌN NHIỀU HỒ SƠ (BATCH SELECT) */
 /* ========================================================= */
-.btn-select-toggle { background: #37474f; color: #fff; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s; }
+/* Nút chọn hết / bỏ chọn hết (toggle, đổi icon + hiện số lượng đã chọn trong ngoặc) */
+.btn-select-toggle { background: #37474f; color: #fff; border: none; padding: 0 12px; height: 34px; min-width: 40px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
 .btn-select-toggle.active { background: #d84315; }
-.select-col { display: none; }
-.table-wrapper.select-mode .select-col { display: table-cell; }
 .select-col input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
 tr.row-checked { background: #e6f4ea; }
 tr.row-checked:hover { background: #d5ead9; }
-#batchActionBar .btn-action { flex: none; padding: 6px 14px; }
+
+/* Cụm nút thao tác hàng loạt (batch) — icon-only, gọn nhưng đủ lớn để bấm, nằm chung hàng action-bar */
+#batchActionButtons { display: none; gap: 6px; }
+.btn-batch-icon { width: 40px; height: 34px; padding: 0; border: none; border-radius: 4px; color: #fff; font-size: 15px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
+.btn-batch-icon.pass { background: #2e7d32; } .btn-batch-icon.pass:hover { background: #1b5e20; }
+.btn-batch-icon.missing { background: #c62828; } .btn-batch-icon.missing:hover { background: #b71c1c; }
+.btn-batch-icon.save { background: #1565c0; } .btn-batch-icon.save:hover { background: #0d47a1; }
+.btn-batch-icon.checked { background: #0288d1; } .btn-batch-icon.checked:hover { background: #0277bd; }
+
 .batch-summary-table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; }
 .batch-summary-table th, .batch-summary-table td { border: 1px solid #e0e0e0; padding: 5px 8px; font-size: 12px; text-align: left; }
 .batch-summary-table th { background: #e0f2f1; color: #006666; }
 @media (max-width: 480px) {
-    #batchActionBar { flex-direction: column; align-items: flex-start !important; }
+    .action-bar { flex-direction: column; align-items: flex-start !important; }
 }
 
 /* ========================================================= */
