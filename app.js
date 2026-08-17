@@ -15,6 +15,7 @@ const API_REQUEST_ACCESS = "https://script.google.com/macros/s/AKfycbxj1dBaUFYXS
 // ==========================================
 let currentIdToken = null;   // JWT gốc — gửi lên server để server tự xác minh (chống giả mạo)
 let currentUserEmail = "";   // chỉ dùng để hiển thị, KHÔNG phải nguồn dữ liệu tin cậy
+let currentUserName = "";    // tên tài khoản (claim "name" của Google) — chỉ dùng để hiển thị
 let currentTokenExp = 0;     // epoch giây, lấy từ claim "exp" của token
 let isVerifiedByServer = false; // chỉ true sau khi server xác nhận token hợp lệ + email nằm trong whitelist "Thẩm định"
 let __isRequestAccessFlow = false;
@@ -68,57 +69,84 @@ async function processAccessRequest(idToken) {
 function updateAppGate() {
     const gate = document.getElementById('loginGate');
     const app = document.getElementById('mainAppContent');
+    const pagBar = document.getElementById('pagination-fixed-bar');
     const loggedIn = isLoggedIn();
     if (gate) gate.style.display = loggedIn ? 'none' : 'flex';
     if (app) app.style.display = loggedIn ? '' : 'none';
-    // KHÔNG tự động fetchSheetData() nữa: dữ liệu chỉ được tải khi người dùng chủ động
-    // bấm nút "Bấm vào đây để lấy danh sách mới nhất" (xem manualLoadData()).
+    if (pagBar) pagBar.style.display = loggedIn ? 'flex' : 'none';
+    // Tự động tải danh sách (7 ngày gần nhất) ngay khi đăng nhập thành công, chỉ 1 lần cho mỗi phiên.
+    if (loggedIn && !window.__dataFetchedOnce) {
+        window.__dataFetchedOnce = true;
+        fetchSheetData();
+    }
 }
 
-// Được gọi khi người dùng bấm nút tải danh sách trong bảng (thay cho auto-fetch khi vào trang).
-async function manualLoadData() {
-    const btn = document.getElementById('btnLoadList');
-    if (btn) { btn.disabled = true; btn.innerText = "⏳ Đang tải danh sách..."; btn.style.opacity = "0.7"; }
-    window.__dataFetchedOnce = true;
-    await fetchSheetData();
+// Gọi lại khi tải dữ liệu thất bại và người dùng bấm nút "Thử lại" trong bảng.
+function reloadData() {
+    fetchSheetData();
 }
 
 function updateAccountLabel() {
     const label = document.getElementById('current-account-label');
     const gateLabel = document.getElementById('gate-account-label');
-    const signoutBtn = document.getElementById('btnSignOut');
     const loggedIn = isLoggedIn();
 
     if (label) {
         if (loggedIn) {
-            label.innerText = `👤 ${currentUserEmail}`;
+            label.innerText = `👤 ${currentUserName} ▾`;
             label.style.color = "#2e7d32";
+            label.style.cursor = "pointer";
         } else {
-            label.innerText = "⚠️ Chưa đăng nhập";
-            label.style.color = "#d32f2f";
+            label.innerText = "";
+            label.style.cursor = "default";
         }
     }
     if (gateLabel && !loggedIn) {
         gateLabel.innerText = "";
     }
-    if (signoutBtn) signoutBtn.style.display = loggedIn ? '' : 'none';
-
+    closeAccountMenu();
     updateAppGate();
+}
+
+// Menu tài khoản (bấm vào tên -> xổ ra "Xem báo cáo" / "Log Out")
+function toggleAccountMenu(evt) {
+    if (evt) evt.stopPropagation();
+    if (!isLoggedIn()) return;
+    const menu = document.getElementById('account-dropdown');
+    if (!menu) return;
+    menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+}
+function closeAccountMenu() {
+    const menu = document.getElementById('account-dropdown');
+    if (menu) menu.style.display = 'none';
+}
+document.addEventListener('click', (evt) => {
+    const wrapper = document.getElementById('account-menu-wrapper');
+    if (wrapper && !wrapper.contains(evt.target)) closeAccountMenu();
+});
+
+// Chức năng "Xem báo cáo": sẽ bổ sung sau.
+function viewReport() {
+    closeAccountMenu();
+    showAlert("Chức năng đang được phát triển, sẽ bổ sung sau.", "📄 Xem báo cáo", false);
 }
 
 function clearLoginState() {
     currentIdToken = null;
     currentUserEmail = "";
+    currentUserName = "";
     currentTokenExp = 0;
     isVerifiedByServer = false;
     sessionStorage.removeItem('gg_id_token_td');
     sessionStorage.removeItem('gg_user_email_td');
+    sessionStorage.removeItem('gg_user_name_td');
     sessionStorage.removeItem('gg_token_exp_td');
     sessionStorage.removeItem('gg_verified_td');
 }
 
 // Đăng xuất: xoá phiên, tắt auto-select của Google để không tự đăng nhập lại account cũ ngay lập tức.
 function signOutUser() {
+    closeAccountMenu();
     clearLoginState();
     try {
         if (window.google && google.accounts && google.accounts.id) {
@@ -152,11 +180,12 @@ async function handleGoogleLogin(response) {
     }
 
     // ---- BƯỚC 1: Đọc thông tin từ token Google trả về ----
-    let idToken, email, exp;
+    let idToken, email, name, exp;
     try {
         const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
         idToken = response.credential;
         email = payload.email;
+        name = payload.name || payload.email;
         exp = payload.exp;
     } catch (e) {
         console.error("Lỗi đọc token Google:", e);
@@ -205,11 +234,13 @@ async function handleGoogleLogin(response) {
 
     currentIdToken = idToken;
     currentUserEmail = result.email || email;
+    currentUserName = result.name || name || currentUserEmail;
     currentTokenExp = exp;
     isVerifiedByServer = true;
 
     sessionStorage.setItem('gg_id_token_td', currentIdToken);
     sessionStorage.setItem('gg_user_email_td', currentUserEmail);
+    sessionStorage.setItem('gg_user_name_td', currentUserName);
     sessionStorage.setItem('gg_token_exp_td', String(currentTokenExp));
     sessionStorage.setItem('gg_verified_td', '1');
     updateAccountLabel();
@@ -223,6 +254,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (savedToken && savedVerified && savedExp > Date.now() / 1000) {
         currentIdToken = savedToken;
         currentUserEmail = sessionStorage.getItem('gg_user_email_td') || "";
+        currentUserName = sessionStorage.getItem('gg_user_name_td') || currentUserEmail;
         currentTokenExp = savedExp;
         isVerifiedByServer = true;
     } else {
@@ -241,15 +273,17 @@ const MAP_HE_DAO_TAO = { "Cao đẳng": "01", "Đại học chính quy": "02", "
 const MAP_HINH_THUC = { "Chính quy đại trà": "1", "Liên thông ĐH - ĐH chính quy (VB 2)": "2", "Thường xuyên: Phương thức ĐTTX": "3", "Thường xuyên: Phương thức VLVH": "4" };
 
 let rawData = []; let filteredData = []; let currentCandidateIndex = -1;
+let pageSize = 10; let currentPage = 1; // Phân trang danh sách hồ sơ
 
 window.onload = () => {
-    document.getElementById('filter-from').value = "2026-01-01";
+    // Mặc định hiển thị hồ sơ trong 7 ngày gần nhất (tính đến hôm nay).
     const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('filter-to').value = `${yyyy}-${mm}-${dd}`;
-    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    document.getElementById('filter-from').value = fmtDate(sevenDaysAgo);
+    document.getElementById('filter-to').value = fmtDate(today);
+
     // KHÔNG gọi fetchSheetData() ở đây nữa — updateAppGate() sẽ tự gọi ngay sau khi
     // xác thực đăng nhập + quyền Thẩm định thành công (xem khối DOMContentLoaded phía trên).
     const crossCheckSelect = document.getElementById('ws-other-major');
@@ -335,7 +369,8 @@ function showPrompt(message, defaultVal, onYesCallback, title = "Yêu cầu nh�
 async function fetchSheetData() {
     try {
         document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu...";
-        
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 30px;">⏳ Đang tải danh sách hồ sơ 7 ngày gần nhất...</td></tr>`;
+
         const response = await fetch(API_LAY_DU_LIEU + "?idToken=" + encodeURIComponent(currentIdToken || ""));
         const result = await response.json();
 
@@ -356,19 +391,22 @@ async function fetchSheetData() {
             document.getElementById('last-updated').innerText = `✔ Đồng bộ an toàn: ${new Date().toLocaleTimeString('vi-VN')}`;
         } else {
             showAlert("Lỗi tải dữ liệu: " + result.message, "❌ LỖI HỆ THỐNG", true);
-            resetLoadListButton();
+            showLoadError();
         }
     } catch (error) {
         showAlert("Không thể kết nối đến máy chủ hoặc sai cấu hình URL API: " + error, "❌ LỖI KẾT NỐI", true);
-        resetLoadListButton();
+        showLoadError();
     }
 }
 
-// Khôi phục nút "Bấm vào đây để lấy danh sách" khi tải thất bại, để người dùng bấm thử lại.
-function resetLoadListButton() {
+// Hiển thị thông báo lỗi kèm nút "Thử lại" ngay trong bảng khi tải dữ liệu thất bại.
+function showLoadError() {
     window.__dataFetchedOnce = false;
-    const btn = document.getElementById('btnLoadList');
-    if (btn) { btn.disabled = false; btn.innerText = "📥 Bấm vào đây để lấy danh sách mới nhất"; btn.style.opacity = "1"; }
+    document.getElementById('last-updated').innerText = "❌ Tải dữ liệu thất bại";
+    document.getElementById('table-body').innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 30px;">
+        ❌ Không tải được danh sách hồ sơ.
+        <button type="button" class="btn-export" style="margin-left:10px; font-size:12px; padding:6px 14px;" onclick="reloadData()">🔄 Thử lại</button>
+    </td></tr>`;
 }
 
 function getVal(row, keys) {
@@ -543,6 +581,7 @@ function applyFilters() {
     document.getElementById('kpi-total').innerText = filteredData.length;
     document.getElementById('kpi-docs').innerText = filteredData.filter(r => getMissingDocs(r).length === 0).length;
     document.getElementById('row-count').innerText = filteredData.length;
+    currentPage = 1; // Mỗi lần lọc/sắp xếp lại đều quay về trang đầu tiên
     renderTable(); 
 }
 
@@ -550,9 +589,23 @@ function resetFilters() { document.querySelectorAll('.filter-box select, .filter
 
 function renderTable() {
     const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
-    if (filteredData.length === 0) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:25px;">❌ Không có hồ sơ nào thỏa điều kiện!</td></tr>`; return; }
+    const total = filteredData.length;
 
-    filteredData.forEach((row, index) => {
+    if (total === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:25px;">❌ Không có hồ sơ nào thỏa điều kiện!</td></tr>`;
+        updatePaginationUI(0, 0, 0);
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * pageSize;
+    const end = Math.min(start + pageSize, total);
+
+    filteredData.slice(start, end).forEach((row, i) => {
+        const index = start + i;
         const tr = document.createElement('tr');
         let btnText = "🔍 Thẩm định"; let btnClass = "btn-review";
         if (row._appState === "Đã duyệt") { btnText = "✅ Đã duyệt"; btnClass = "btn-review pass-state"; }
@@ -578,6 +631,41 @@ function renderTable() {
         `;
         tbody.appendChild(tr);
     });
+
+    updatePaginationUI(start + 1, end, total);
+}
+
+// Cập nhật dòng ghi chú "Đang hiển thị A–B / Tổng" và trạng thái nút điều hướng trang.
+function updatePaginationUI(from, to, total) {
+    const info = document.getElementById('pagination-info');
+    if (info) info.innerText = total === 0 ? "Không có hồ sơ nào." : `Đang hiển thị ${from}–${to} / ${total} hồ sơ`;
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const btnNewer = document.getElementById('btnPageNewer');
+    const btnOlder = document.getElementById('btnPageOlder');
+    if (btnNewer) btnNewer.disabled = (currentPage <= 1);
+    if (btnOlder) btnOlder.disabled = (currentPage >= totalPages || total === 0);
+
+    const sizeSelect = document.getElementById('page-size-select');
+    if (sizeSelect && sizeSelect.value != String(pageSize)) sizeSelect.value = String(pageSize);
+}
+
+// Đổi mức hiển thị (10/20/50/100 hồ sơ mỗi trang).
+function changePageSize(size) {
+    pageSize = parseInt(size, 10) || 10;
+    currentPage = 1;
+    renderTable();
+}
+
+// "Mới hơn": quay lại trang trước đó (các hồ sơ gần đây hơn).
+function goToNewerPage() {
+    if (currentPage > 1) { currentPage--; renderTable(); }
+}
+
+// "Cũ hơn": sang trang kế tiếp (các hồ sơ cũ hơn).
+function goToOlderPage() {
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+    if (currentPage < totalPages) { currentPage++; renderTable(); }
 }
 
 // ==========================================
