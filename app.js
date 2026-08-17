@@ -47,7 +47,7 @@ function sessionMonitorTick() {
 
     // 1) Không thao tác quá 30 phút -> tự động đăng xuất, đẩy về màn hình đăng nhập
     if (now - lastActivityAt >= IDLE_TIMEOUT_MS) {
-        forceSessionTimeout("⏰ Bạn đã không thao tác trong 30 phút. Phiên làm việc đã tự động kết thúc, vui lòng đăng nhập lại.");
+        forceSessionTimeout("⏰ Phiên đăng nhập hết hạn do không thao tác quá lâu. Vui lòng đăng nhập lại.");
         return;
     }
 
@@ -74,13 +74,32 @@ function sessionMonitorTick() {
 }
 setInterval(sessionMonitorTick, 20 * 1000); // kiểm tra mỗi 20 giây
 
-// Bắt buộc kết thúc phiên: dọn trạng thái đăng nhập + quay lại màn hình đăng nhập + báo cho người dùng.
+// Bắt buộc kết thúc phiên: đóng LẦN LƯỢT mọi popup/modal đang mở, dọn trạng thái đăng nhập,
+// đẩy về màn hình đăng nhập và hiển thị thông báo NGAY DƯỚI nút đăng nhập Google —
+// KHÔNG hiện popup thông báo xen ngang (tránh popup này lại bị 1 popup khác che/đè lên).
 function forceSessionTimeout(message) {
     hideSessionExpiryBanner();
+    closeAllOpenModals();
     clearLoginState();
     try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) { /* ignore */ }
-    updateAccountLabel();
-    showAlert(message, "🔒 PHIÊN LÀM VIỆC KẾT THÚC", true);
+    updateAccountLabel(); // -> ẩn giao diện chính, hiện lại màn hình đăng nhập (qua updateAppGate() bên trong)
+    const gateLabel = document.getElementById('gate-account-label');
+    if (gateLabel) {
+        gateLabel.innerText = message;
+        gateLabel.style.color = "#d32f2f";
+    }
+}
+
+// Đóng lần lượt mọi modal/popup đang mở trên trang (nếu có) — dùng khi buộc kết thúc phiên do hết hạn
+// / không thao tác, để không còn popup nào treo lơ lửng đè lên màn hình đăng nhập vừa hiện ra.
+// Thứ tự đóng từ lớp phủ TRÊN CÙNG xuống dưới (theo z-index): feedback -> customModal (alert/confirm/prompt)
+// -> largeTableModal (bảng điểm/đối sánh) -> workspaceModal (bảng thẩm định chi tiết).
+function closeAllOpenModals() {
+    closeAccountMenu();
+    if (document.getElementById('feedbackModal')?.style.display !== 'none') closeFeedbackModal();
+    if (document.getElementById('customModal')?.style.display !== 'none') closeCustomModal();
+    if (document.getElementById('largeTableModal')?.style.display !== 'none') closeLargeTableModal();
+    if (document.getElementById('workspaceModal')?.style.display !== 'none') closeWorkspace();
 }
 
 // Thử gia hạn phiên NGẦM: gọi lại hộp thoại chọn tài khoản Google.
