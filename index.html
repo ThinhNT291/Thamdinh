@@ -185,17 +185,28 @@
         <div class="ws-body">
             
             <div class="ws-section-title">I. THÔNG TIN THÍ SINH</div>
-            <div class="info-grid">
-                <div class="info-card"><span class="info-label">Số Căn cước</span><span class="info-val" id="ws-cccd"></span></div>
-                <div class="info-card"><span class="info-label">Họ và Tên</span><span class="info-val" id="ws-fullname"></span></div>
-                <div class="info-card"><span class="info-label">Mã SV Đề xuất</span><span class="info-val highlight" id="ws-masv"></span></div>
-                <div class="info-card"><span class="info-label">Hệ đào tạo</span><span class="info-val" id="ws-hedt"></span></div>
-                <div class="info-card"><span class="info-label">Hình thức đào tạo</span><span class="info-val" id="ws-hinhthuc"></span></div>
-                <div class="info-card"><span class="info-label">Ngành xét tuyển</span><span class="info-val" id="ws-nganh"></span></div>
-                <div class="info-card"><span class="info-label">Khu vực / Đối tượng ưu tiên</span><span class="info-val" id="ws-kvdt"></span></div>
-                <div class="info-card"><span class="info-label">Trạng thái hồ sơ</span><span class="info-val" id="ws-hoso-status"></span></div>
-                <div class="info-card link-card" onclick="openDriveLink()">
-                    <span style="color: #00796b; font-weight: bold; font-size: 13px;">📁 Kiểm tra hồ sơ</span>
+            <div class="info-tables-wrap">
+                <div class="info-table-box">
+                    <table>
+                        <tbody>
+                            <tr><td class="info-label-cell">Họ và Tên</td><td class="info-val-cell" id="ws-fullname"></td></tr>
+                            <tr><td class="info-label-cell">Số Căn cước</td><td class="info-val-cell" id="ws-cccd"></td></tr>
+                            <tr><td class="info-label-cell">Mã SV Đề xuất</td><td class="info-val-cell highlight" id="ws-masv"></td></tr>
+                            <tr><td class="info-label-cell">Ngành xét tuyển</td><td class="info-val-cell" id="ws-nganh"></td></tr>
+                            <tr><td class="info-label-cell">Đối tượng đầu vào</td><td class="info-val-cell" id="ws-doituong"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="info-table-box">
+                    <table>
+                        <tbody>
+                            <tr><td class="info-label-cell">Hệ đào tạo</td><td class="info-val-cell" id="ws-hedt"></td></tr>
+                            <tr><td class="info-label-cell">Hình thức đào tạo</td><td class="info-val-cell" id="ws-hinhthuc"></td></tr>
+                            <tr><td class="info-label-cell">KV / Đối tượng ưu tiên</td><td class="info-val-cell" id="ws-kvdt"></td></tr>
+                            <tr><td class="info-label-cell">Trạng thái hồ sơ</td><td class="info-val-cell" id="ws-hoso-status"></td></tr>
+                            <tr class="link-row" onclick="openDriveLink()"><td class="info-label-cell">Hồ sơ đính kèm</td><td class="info-val-cell">📁 Kiểm tra hồ sơ</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -261,7 +272,7 @@
 <div id="feedbackModal" class="workspace-overlay" style="z-index: 100050; display: none;">
     <div class="workspace-modal" style="width: 90%; max-width: 420px; height: auto;">
         <div class="ws-header" style="font-size: 14px; background: #6a1b9a;">
-            <span> 📩 Send Feedback </span>
+            <span>📩 Gửi phản hồi nếu có lỗi</span>
             <span style="cursor:pointer;" onclick="closeFeedbackModal()">✖</span>
         </div>
         <div id="feedbackBody" class="ws-body" style="padding: 18px 15px;"></div>
