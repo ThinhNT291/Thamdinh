@@ -1,14 +1,12 @@
 // ==========================================
 // CẤU HÌNH API VÀ BIẾN TOÀN CỤC
 // ==========================================
-//const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
-
-const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbycJi3rk9OBLRQt79jYZb-VCawHB1NeIOlIUD-3E6fjPrY_2WvDXNP50ZikYidHAoUNyw/exec";
+const API_LAY_DU_LIEU = "https://script.google.com/macros/s/AKfycbxzIuSm2Gn1tYzEv0A1GXLF72QLQl2ZbGjk1NcGymGLrE1vd5Hhf1vuF-5EqHlgU3k/exec";
 const API_QUET_CCCD = "https://script.google.com/macros/s/AKfycbzWI0IHShoBfNSBZXw46lbNbhgKJRN-jP0ckQXdY3-yFBFTLu40id6_P9Ufn78Lx4xl/exec";
 const API_DAO_TAO = "https://script.google.com/macros/s/AKfycbztZs8SS1dSB7TGRTAVI289Rno3IlkfecRLLFkQYsvUIyR3GLhE9AV210dR9ZVbXBVu6w/exec"; 
 const API_TRUNG_TUYEN = "https://script.google.com/macros/s/AKfycbxENuP4trkPcG24rnZEyHDFAk3FyNaaWA3NCBOyxfV-HB1Wv7t3JDlRg54JD9qNb_XtXg/exec";
 const API_BAO_THIEU = "https://script.google.com/macros/s/AKfycbye3sn6obd4jGD746BsP4Lc0TORJSLVv7pRen9itwzmj4C16bge-ek36EsU6jOr97h_/exec";
-const API_LUU_KETQUA = "https://script.google.com/macros/s/AKfycbwYQNN_bwJ9fOxWx6-cqWCmqS_kaBQY2wj1QSbGeqnIhfDSJuscZBwR8Bt7P3OX9N7iwg/exec"; 
+const API_LUU_KETQUA = "https://script.google.com/macros/s/AKfycbxLC5OQqEQ3N6Y856F2hlfKn0bppy6U042V3Jh21JJIou44z6rg03zpcLwGp19UnZgLFg/exec"; 
 const API_REQUEST_ACCESS = "https://script.google.com/macros/s/AKfycbxj1dBaUFYXSK_LKeNIhDNdLIl0ZPuoylNf1e9U2tYK_CX-cO1s6rA5NMzlKGsNEe3jcw/exec";
 // ==========================================
 // ĐĂNG NHẬP GOOGLE (XÁC THỰC TÀI KHOẢN BAN THẨM ĐỊNH)
@@ -436,6 +434,72 @@ const MAP_HINH_THUC = { "Chính quy đại trà": "1", "Liên thông ĐH - ĐH c
 let rawData = []; let filteredData = []; let currentCandidateIndex = -1;
 let pageSize = 10; let currentPage = 1; // Phân trang danh sách hồ sơ
 
+// ==========================================
+// CHỌN NHIỀU HỒ SƠ (BATCH SELECT) — Duyệt / Y.c bổ sung / Lưu CSDL hàng loạt
+// ==========================================
+let selectMode = false;
+let selectedKeys = new Set();
+// "Checked" chỉ để đánh dấu tạm trong phiên làm việc (đã xem qua, chờ xử lý sau) — dùng sessionStorage
+// nên tự mất khi đóng tab/trình duyệt, không lưu vĩnh viễn, không gửi lên server.
+let checkedKeys = new Set();
+try { checkedKeys = new Set(JSON.parse(sessionStorage.getItem('td_checked_keys') || '[]')); } catch (e) { checkedKeys = new Set(); }
+
+function persistCheckedKeys() {
+    try { sessionStorage.setItem('td_checked_keys', JSON.stringify([...checkedKeys])); } catch (e) {}
+}
+
+function toggleSelectMode() {
+    selectMode = !selectMode;
+    selectedKeys.clear();
+    document.getElementById('tableWrapper').classList.toggle('select-mode', selectMode);
+    document.getElementById('btnToggleSelect').classList.toggle('active', selectMode);
+    document.getElementById('btnToggleSelect').innerText = selectMode ? "✖ Thoát chế độ chọn" : "☑️ Chọn";
+    document.getElementById('selectAllBar').style.display = selectMode ? 'flex' : 'none';
+    renderTable();
+    updateBatchBar();
+}
+
+function toggleRowSelectByIndex(idx, checked) {
+    const row = filteredData[idx];
+    if (!row) return;
+    const key = getRowKey(row);
+    if (checked) selectedKeys.add(key); else selectedKeys.delete(key);
+    updateBatchBar();
+}
+
+function selectAllVisible() {
+    filteredData.forEach(r => selectedKeys.add(getRowKey(r)));
+    renderTable();
+    updateBatchBar();
+}
+
+function deselectAllVisible() {
+    selectedKeys.clear();
+    renderTable();
+    updateBatchBar();
+}
+
+function updateBatchBar() {
+    const bar = document.getElementById('batchActionBar');
+    const count = selectedKeys.size;
+    document.getElementById('batchSelectedCount').innerText = count;
+    bar.style.display = (selectMode && count > 0) ? 'flex' : 'none';
+}
+
+// Tick "Checked" cho các hồ sơ đang được chọn: nếu tất cả đã Checked -> bỏ Checked hàng loạt,
+// ngược lại -> Checked hàng loạt. Chỉ tô màu dòng, không gửi gì lên server, không đổi trạng thái thẩm định.
+function toggleCheckedForSelected() {
+    const selRows = filteredData.filter(r => selectedKeys.has(getRowKey(r)));
+    if (selRows.length === 0) return;
+    const allChecked = selRows.every(r => checkedKeys.has(getRowKey(r)));
+    selRows.forEach(r => {
+        const k = getRowKey(r);
+        if (allChecked) checkedKeys.delete(k); else checkedKeys.add(k);
+    });
+    persistCheckedKeys();
+    renderTable();
+}
+
 window.onload = () => {
     // Mặc định hiển thị hồ sơ trong 7 ngày gần nhất (tính đến hôm nay).
     const today = new Date();
@@ -531,7 +595,7 @@ function showPrompt(message, defaultVal, onYesCallback, title = "Yêu cầu nh�
 async function fetchSheetData() {
     try {
         document.getElementById('last-updated').innerText = "⏳ Đang tải dữ liệu...";
-        document.getElementById('table-body').innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 30px;">⏳ Đang tải danh sách hồ sơ 7 ngày gần nhất...</td></tr>`;
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 30px;">⏳ Đang tải danh sách hồ sơ 7 ngày gần nhất...</td></tr>`;
 
         const response = await fetch(API_LAY_DU_LIEU + "?idToken=" + encodeURIComponent(currentIdToken || ""));
         const result = await response.json();
@@ -565,7 +629,7 @@ async function fetchSheetData() {
 function showLoadError() {
     window.__dataFetchedOnce = false;
     document.getElementById('last-updated').innerText = "❌ Tải dữ liệu thất bại";
-    document.getElementById('table-body').innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 30px;">
+    document.getElementById('table-body').innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 30px;">
         ❌ Không tải được danh sách hồ sơ.
         <button type="button" class="btn-export" style="margin-left:10px; font-size:12px; padding:6px 14px;" onclick="reloadData()">🔄 Thử lại</button>
     </td></tr>`;
@@ -763,19 +827,26 @@ function applyFilters() {
     document.getElementById('kpi-docs').innerText = filteredData.filter(r => getMissingDocs(r).length === 0).length;
     document.getElementById('kpi-missing').innerText = filteredData.filter(r => getMissingDocs(r).length > 0).length;
     document.getElementById('kpi-approved').innerText = filteredData.filter(r => r._appState === "Đã duyệt").length;
-    document.getElementById('row-count').innerText = filteredData.length;
     currentPage = 1; // Mỗi lần lọc/sắp xếp lại đều quay về trang đầu tiên
     renderTable(); 
 }
 
 function resetFilters() { document.querySelectorAll('.filter-box select, .filter-box input').forEach(s => s.value = ''); applyFilters(); }
 
+// Khóa ghép đôi CCCD + Ngành — dùng để nhận diện 1 hồ sơ duy nhất khi chọn hàng loạt
+// (khớp với cách các GAS backend chống trùng: cccd + "_" + nganh viết thường)
+function getRowKey(row) {
+    let cccd = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '').trim();
+    let nganh = getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]).trim().toLowerCase();
+    return cccd + "_" + nganh;
+}
+
 function renderTable() {
     const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
     const total = filteredData.length;
 
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:25px;">❌ Không có hồ sơ nào thỏa điều kiện!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:25px;">❌ Không có hồ sơ nào thỏa điều kiện!</td></tr>`;
         updatePaginationUI(0, 0, 0);
         return;
     }
@@ -790,6 +861,9 @@ function renderTable() {
     filteredData.slice(start, end).forEach((row, i) => {
         const index = start + i;
         const tr = document.createElement('tr');
+        const key = getRowKey(row);
+        if (checkedKeys.has(key)) tr.className = 'row-checked';
+
         let btnText = "🔍 Thẩm định"; let btnClass = "btn-review";
         if (row._appState === "Đã duyệt") { btnText = "✅ Đã duyệt"; btnClass = "btn-review pass-state"; }
         else if (row._appState === "Đã báo thiếu") { btnText = "⚠️ Đã yêu cầu BS"; btnClass = "btn-review warn-state"; }
@@ -801,6 +875,7 @@ function renderTable() {
         let cccdStr = getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, '');
 
         tr.innerHTML = `
+            <td class="select-col" style="text-align: center;"><input type="checkbox" onchange="toggleRowSelectByIndex(${index}, this.checked)" ${selectedKeys.has(key) ? 'checked' : ''}></td>
             <td style="text-align: center;">${index + 1}</td>
             <td style="text-align: center;"><b>${escapeHtml(getVal(row, ["TIME"]).split(' ')[0])}</b></td>
             <td style="color:#d84315; font-weight:bold;">${escapeHtml(generateMaSV(row))}</td>
@@ -1258,6 +1333,159 @@ async function triggerSaveToSheet() {
             updateModalActionButtons(); // 🔓
         }
     }, "LƯU VÀO CSDL");
+}
+
+// ==========================================
+// BATCH ACTION: mở modal tổng hợp (Bước 1 — chỉ xem trước + lọc, CHƯA gửi request)
+// type: 'duyet' | 'baothieu' | 'luucsdl'
+// ==========================================
+function openBatchSummary(type) {
+    const selectedRows = filteredData.filter(r => selectedKeys.has(getRowKey(r)));
+    if (selectedRows.length === 0) { showAlert("Chưa chọn hồ sơ nào.", "⚠️ CHÚ Ý", true); return; }
+
+    let validRows = [];
+    let excludedReasons = {};
+
+    selectedRows.forEach(row => {
+        let reason = null;
+        if (type === 'duyet') {
+            if (row._appState === "Đã duyệt") reason = "đã duyệt";
+            else if (row._appState === "Đã báo thiếu") reason = "đã báo thiếu";
+            else if (getMissingTienQuyet(row).length > 0) reason = "thiếu hồ sơ tiên quyết";
+        } else if (type === 'baothieu') {
+            if (row._appState === "Đã duyệt") reason = "đã duyệt";
+            else if (row._appState === "Đã báo thiếu") reason = "đã báo thiếu";
+        } else if (type === 'luucsdl') {
+            if (row._saved) reason = "đã lưu vào CSDL";
+        }
+        if (reason) { excludedReasons[reason] = (excludedReasons[reason] || 0) + 1; }
+        else validRows.push(row);
+    });
+
+    if (validRows.length === 0) {
+        showAlert("Không có hồ sơ nào đủ điều kiện để thực hiện thao tác này trong danh sách đã chọn.", "⚠️ KHÔNG THỂ THỰC HIỆN", true);
+        return;
+    }
+
+    const excludedTotal = selectedRows.length - validRows.length;
+    let excludedNote = "";
+    if (excludedTotal > 0) {
+        let parts = Object.keys(excludedReasons).map(r => `${excludedReasons[r]} ${r}`);
+        excludedNote = `<div style="background:#fff3e0; border:1px dashed #ffb74d; padding:6px 10px; border-radius:4px; margin-bottom:10px; font-size:12px; color:#e65100;">⚠️ Đã loại ${excludedTotal} hồ sơ khỏi danh sách do: ${parts.join(', ')}.</div>`;
+    }
+
+    const titleMap = { duyet: "✅ XÁC NHẬN DUYỆT TRÚNG TUYỂN HÀNG LOẠT", baothieu: "⚠️ XÁC NHẬN YÊU CẦU BỔ SUNG HỒ SƠ HÀNG LOẠT", luucsdl: "💾 XÁC NHẬN LƯU VÀO CSDL HÀNG LOẠT" };
+    document.getElementById('largeModalTitle').innerText = titleMap[type];
+
+    const cols = (type === 'luucsdl')
+        ? ["STT", "Họ tên", "Điểm/tổ hợp", "Hồ sơ", "Trạng thái thẩm định"]
+        : ["STT", "Họ tên", "Điểm/tổ hợp", "Hồ sơ"];
+
+    const rowsHtml = validRows.map((row, i) => {
+        let missing = getMissingDocs(row);
+        let badge = missing.length > 0 ? `<span class="badge badge-warning" style="white-space:normal;text-align:left;">Thiếu: ${missing.join(', ')}</span>` : `<span class="badge badge-success">Đủ hồ sơ</span>`;
+        let hoTen = escapeHtml(getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]));
+        let statusCell = (type === 'luucsdl') ? `<td>${escapeHtml(row._appState || "Đang chờ duyệt")}</td>` : "";
+        return `<tr><td style="text-align:center;">${i + 1}</td><td>${hoTen}</td><td style="text-align:center;">${getBestScoreText(row)}</td><td>${badge}</td>${statusCell}</tr>`;
+    }).join('');
+
+    const warnLine = (type === 'luucsdl')
+        ? `<div style="background:#ffebee; border:1px dashed #ef5350; padding:8px 10px; border-radius:4px; margin-top:10px; font-size:12px; color:#c62828; font-weight:bold;">🔎 Vui lòng kiểm tra kỹ lưỡng danh sách trên trước khi lưu vào CSDL — thao tác này sẽ ghi dữ liệu chính thức.</div>`
+        : "";
+
+    document.getElementById('largeModalContent').innerHTML = `
+        ${excludedNote}
+        <div style="margin-bottom:8px; font-size:12px; color:#555;">Sẽ thực hiện thao tác cho <b>${validRows.length}</b> hồ sơ sau:</div>
+        <table class="batch-summary-table">
+            <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        ${warnLine}
+    `;
+
+    document.getElementById('largeModalFooter').innerHTML = `
+        <button class="btn-modal-cancel" onclick="closeLargeTableModal()">Hủy bỏ</button>
+        <button class="btn-modal-ok" id="btnBatchConfirm">Xác nhận</button>
+    `;
+    document.getElementById('btnBatchConfirm').onclick = () => executeBatchAction(type, validRows);
+    document.getElementById('largeTableModal').style.display = 'flex';
+}
+
+// ==========================================
+// BATCH ACTION: gửi request thật (Bước 2 — chỉ chạy khi bấm Xác nhận trong modal tổng hợp)
+// ==========================================
+async function executeBatchAction(type, rows) {
+    const btn = document.getElementById('btnBatchConfirm');
+    if (btn) { btn.disabled = true; btn.innerText = "⏳ Đang xử lý..."; }
+
+    let apiUrl, payload;
+    if (type === 'duyet') {
+        apiUrl = API_TRUNG_TUYEN;
+        payload = rows.map(row => ({
+            soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''),
+            hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
+            nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+            ngaySinh: getVal(row, ["NGÀNH SINH", "NGÀY SINH"]),
+            ngayCapNhat: new Date().toLocaleDateString('vi-VN')
+        }));
+    } else if (type === 'baothieu') {
+        apiUrl = API_BAO_THIEU;
+        payload = rows.map(row => {
+            let missingArray = getMissingDocs(row);
+            let text = missingArray.length > 0 ? missingArray.join(', ') : "Bản sao Học bạ THPT";
+            return {
+                soCCCD: getVal(row, ["CĂN CƯỚC", "CCCD", "SỐ CCCD"]).replace(/^['"]+|['"]+$/g, ''),
+                hoTen: getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]),
+                nganh: getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]),
+                hosoThieu: "Thiếu: " + text,
+                ngayCapNhat: new Date().toLocaleDateString('vi-VN')
+            };
+        });
+    } else if (type === 'luucsdl') {
+        apiUrl = API_LUU_KETQUA;
+        payload = rows.map(row => {
+            let p = { ...row };
+            p["MÃ SINH VIÊN"] = generateMaSV(row);
+            p["ĐIỂM TRÚNG TUYỂN"] = getRawScoreNumber(row);
+            p["KẾT QUẢ ĐIỂM"] = "Trúng tuyển";
+            p["NGÀY CẬP NHẬT HỒ SƠ"] = new Date().toLocaleString('vi-VN');
+            return p;
+        });
+    }
+
+    try {
+        const resp = await fetch(apiUrl + "?idToken=" + encodeURIComponent(currentIdToken || ""), { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        const result = await resp.json();
+        closeLargeTableModal();
+
+        if (result.status === "success") {
+            rows.forEach(row => {
+                const key = getRowKey(row);
+                if (type === 'duyet') row._appState = "Đã duyệt";
+                else if (type === 'baothieu') row._appState = "Đã báo thiếu";
+                else if (type === 'luucsdl') row._saved = true;
+                selectedKeys.delete(key);
+                checkedKeys.delete(key); // hồ sơ đã xử lý xong -> tự bỏ trạng thái Checked tạm
+            });
+            persistCheckedKeys();
+
+            const doneText = type === 'duyet' ? "Duyệt trúng tuyển" : type === 'baothieu' ? "Yêu cầu bổ sung hồ sơ" : "Lưu vào CSDL";
+            let extra = "";
+            if (typeof result.added === "number" || typeof result.updated === "number" || typeof result.skipped === "number") {
+                extra = ` (Thêm mới: ${result.added || 0}, Cập nhật: ${result.updated || 0}, Bỏ qua/trùng: ${result.skipped || 0})`;
+            }
+            showAlert(`${doneText} hàng loạt thành công cho ${rows.length} hồ sơ!${extra}`, "🎉 THÀNH CÔNG", false);
+            if (type === 'duyet' && result.pdfUrl) window.open(result.pdfUrl, '_blank');
+
+            renderTable();
+            updateBatchBar();
+        } else {
+            showAlert("Lỗi hệ thống: " + result.message, "❌ LỖI", true);
+        }
+    } catch (e) {
+        closeLargeTableModal();
+        showAlert("Lỗi mạng: " + e, "❌ LỖI", true);
+    }
 }
 
 // KHÓA SỰ KIỆN NÚT ESC — luôn đóng đúng lớp modal đang NẰM TRÊN CÙNG trước (theo thứ tự z-index giảm dần),
