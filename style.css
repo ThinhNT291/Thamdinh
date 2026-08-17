@@ -7,10 +7,12 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 h1 { color: var(--primary); margin-top: 0; font-size: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
 /* KPI & BỘ LỌC */
-.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 10px 0; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0; }
 .kpi-card { background: #eef7f6; border: 1px solid #b2ebf2; border-left: 4px solid var(--primary); border-radius: 4px; padding: 8px 12px; }
 .kpi-title { font-size: 11px; color: #555; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
 .kpi-value { font-size: 22px; font-weight: bold; color: var(--primary-dark); }
+@media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 420px) { .kpi-grid { grid-template-columns: 1fr; } }
 .filter-box { background: #f8fbfb; border: 1px solid #d0e8e6; border-radius: 4px; padding: 10px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
 .filter-group { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 140px; }
 .filter-group label { font-size: 10px; font-weight: bold; color: #444; text-transform: uppercase; }
@@ -62,11 +64,11 @@ tr:hover { background: #f1f8f8; }
 /* THÔNG TIN THÍ SINH — 2 bảng nhãn/nội dung song song */
 .info-tables-wrap { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
 .info-table-box { flex: 1 1 320px; min-width: 280px; background: #fff; border: 1px solid #d0e8e6; border-radius: 4px; overflow: hidden; }
-.info-table-box table { width: 100%; border-collapse: collapse; }
-.info-table-box td { padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: middle; }
+.info-table-box table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.info-table-box td { padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: middle; overflow-wrap: break-word; }
 .info-table-box tr:last-child td { border-bottom: none; }
 .info-table-box td.info-label-cell { width: 42%; font-weight: bold; color: #666; text-transform: uppercase; font-size: 10.5px; background: #f8fbfb; white-space: nowrap; }
-.info-table-box td.info-val-cell { color: #111; font-weight: 600; }
+.info-table-box td.info-val-cell { width: 58%; color: #111; font-weight: 600; min-height: 1em; }
 .info-table-box td.info-val-cell.highlight { color: #d84315; }
 .info-table-box tr.link-row { cursor: pointer; transition: 0.2s; }
 .info-table-box tr.link-row td.info-val-cell { color: #00796b; font-weight: bold; }
