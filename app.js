@@ -663,12 +663,16 @@ function getBestScoreText(row) {
         if (maxScore > 0) {
             let finalUTien = maxScore >= 22.5 ? ((30 - maxScore) / 7.5) * uTienBanDau : uTienBanDau;
             let finalTotalScore = (maxScore + finalUTien + diemCong).toFixed(2);
+            // finalTotalScore luôn là số (toFixed) và bestCombo lấy từ key DICT_TO_HOP (cứng trong code,
+            // không phải dữ liệu thí sinh nhập) -> an toàn, KHÔNG escape ở đây (escape sẽ phá vỡ thẻ HTML).
             return `<b style="color:#d84315;">${finalTotalScore}</b> <span style="font-size:10px; color:#555;">(${bestCombo})</span>`;
         } else { return `<span style="color:#999; font-size:10px;">Chưa đủ điểm</span>`; }
     } else {
         let h4 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 4"]); let h10 = getVal(row, ["ĐIỂM TB TOÀN KHÓA HỆ 10"]);
-        if(h4) return `<b style="color:#d84315;">${h4}</b> <span style="font-size:10px; color:#555;">(Hệ 4)</span>`;
-        if(h10) return `<b style="color:#d84315;">${h10}</b> <span style="font-size:10px; color:#555;">(Hệ 10)</span>`;
+        // h4/h10 lấy trực tiếp từ Sheet do thí sinh tự nhập -> PHẢI escape trước khi ghép vào HTML,
+        // nhưng chỉ escape đúng giá trị này, không escape cả chuỗi HTML đã dựng (khác với renderTable()).
+        if(h4) return `<b style="color:#d84315;">${escapeHtml(h4)}</b> <span style="font-size:10px; color:#555;">(Hệ 4)</span>`;
+        if(h10) return `<b style="color:#d84315;">${escapeHtml(h10)}</b> <span style="font-size:10px; color:#555;">(Hệ 10)</span>`;
         return `<span style="color:#999; font-size:10px;">Chưa có điểm</span>`;
     }
 }
@@ -783,7 +787,7 @@ function renderTable() {
             <td><b>${escapeHtml(getVal(row, ["TÊN SINH VIÊN", "HỌ VÀ TÊN"]))}</b></td>
             <td>${escapeHtml(getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]))}</td>
             <td>${escapeHtml(getVal(row, ["ĐỐI TƯỢNG ĐẦU VÀO", "ĐỐI TƯỢNG"]))}</td>
-            <td style="text-align: center;">${escapeHtml(getBestScoreText(row))}</td>
+            <td style="text-align: center;">${getBestScoreText(row)}</td>
             <td>${badge}</td>
             <td style="text-align: center;"><button class="${btnClass}" onclick="openWorkspace(${index})">${btnText}</button></td>
         `;
