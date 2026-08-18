@@ -1063,15 +1063,39 @@ function openWorkspace(index) {
 
     calculateAndRenderScores(row, getVal(row, ["NGÀNH", "NGÀNH ĐÀO TẠO"]));
     updateModalActionButtons();
+
+    // Tooltip: cho xem trước link thật khi rê chuột, trước khi bấm mở — người thẩm định tự soát
+    // được đây có đúng là link Google Drive/Docs hợp lệ hay không trước khi click.
+    const linkRowEl = document.querySelector('#workspaceModal .link-row');
+    if (linkRowEl) {
+        const linkVal = getVal(row, ["LINK HỒ SƠ", "Link hồ sơ"]);
+        linkRowEl.title = isSafeDriveUrl(linkVal) ? linkVal : "Không có link hợp lệ";
+    }
+
     document.getElementById('workspaceModal').style.display = 'flex';
 }
 
 function closeWorkspace() { document.getElementById('workspaceModal').style.display = 'none'; }
 
+// CHỐNG XSS QUA LINK: backend (trunggian.gs) đã validate whitelist domain trước khi trả về, nhưng
+// vẫn kiểm tra lại lần nữa ở đây (defense in depth) — phòng trường hợp dữ liệu cache cũ, hoặc sau
+// này có code khác gọi thẳng openDriveLink() mà bỏ qua bước gọi API. TUYỆT ĐỐI không mở link nếu
+// không đúng dạng https://drive.google.com/... hay https://docs.google.com/... — chặn javascript:,
+// data:, hay domain lạ mà ai đó lỡ paste/gõ nhầm vào ô Link hồ sơ trên sheet.
+const ALLOWED_LINK_HOSTS = ["drive.google.com", "docs.google.com"];
+function isSafeDriveUrl(url) {
+    if (!url) return false;
+    if (!/^https:\/\//i.test(url)) return false;
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return ALLOWED_LINK_HOSTS.some(h => host === h || host.endsWith("." + h));
+    } catch (e) { return false; }
+}
+
 function openDriveLink() { 
     let link = getVal(filteredData[currentCandidateIndex], ["LINK HỒ SƠ", "Link hồ sơ"]); 
-    if(link && link.includes("http")) { window.open(link, '_blank'); } 
-    else { showAlert("Hồ sơ này không có đường link đính kèm hợp lệ.", "❌ KHÔNG TÌM THẤY LINK", true); } 
+    if(isSafeDriveUrl(link)) { window.open(link, '_blank', 'noopener,noreferrer'); } 
+    else { showAlert("Hồ sơ này không có đường link đính kèm hợp lệ (hoặc link không thuộc Google Drive/Docs).", "❌ KHÔNG TÌM THẤY LINK", true); } 
 }
 
 function prevWorkspace() { if (currentCandidateIndex > 0) openWorkspace(currentCandidateIndex - 1); }
