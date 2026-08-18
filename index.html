@@ -6,7 +6,7 @@
     <title>Application Review Workspace</title>
     
     <!-- GỌI FILE CSS LÀM ĐẸP (CHỈ GỌI FILE NỘI BỘ REPO 2) -->
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -93,24 +93,36 @@
         <div class="kpi-card"><span class="kpi-title">✅ Hồ sơ đã duyệt: </span><span class="kpi-value" style="color: #2e7d32;" id="kpi-approved">0</span></div>
     </div>
 
+    <!-- ========================================================
+         BỘ LỌC — Ô TÌM KIẾM NẰM SÁT MÉP TRÁI, TOÀN BỘ KHỐI LỌC DỒN SANG PHẢI.
+         Chiều rộng từng ô lọc được rút gọn (ngày -40%, trạng thái hồ sơ -50%, sắp xếp -30%)
+         để nhường chỗ cho ô tìm kiếm mà không làm rớt hàng.
+         ======================================================== -->
     <div class="filter-box">
-        <div class="filter-group"><label>Từ ngày:</label><input type="date" id="filter-from" onchange="applyFilters()"></div>
-        <div class="filter-group"><label>Đến ngày:</label><input type="date" id="filter-to" onchange="applyFilters()"></div>
-        <div class="filter-group"><label>Ngành đào tạo:</label><select id="filter-nganh" onchange="applyFilters()"><option value="">-- Tất cả ngành --</option></select></div>
-        <div class="filter-group"><label>Đối tượng đầu vào:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
-        <div class="filter-group"><label>Trạng thái hồ sơ:</label>
-            <select id="filter-hoso" onchange="applyFilters()"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
+        <div class="filter-group fg-search">
+            <label>Tìm kiếm nhanh:</label>
+            <input type="search" id="filter-search" placeholder="🔎 Mã SV / Căn cước / Họ và tên..." oninput="onSearchInput()" autocomplete="off">
         </div>
-        <div class="filter-group"><label>Sắp xếp:</label>
-            <select id="sort-by" onchange="applyFilters()">
-                <option value="default">Mặc định (Theo STT)</option>
-                <option value="date_desc" selected>Ngày nộp (Mới nhất)</option>
-                <option value="date_asc">Ngày nộp (Cũ nhất)</option>
-                <option value="score_desc">Điểm (Cao -> Thấp)</option>
-                <option value="status">Trạng thái thẩm định</option>
-            </select>
+
+        <div class="filter-controls">
+            <div class="filter-group fg-date"><label>Từ ngày:</label><input type="date" id="filter-from" onchange="applyFilters()"></div>
+            <div class="filter-group fg-date"><label>Đến ngày:</label><input type="date" id="filter-to" onchange="applyFilters()"></div>
+            <div class="filter-group fg-nganh"><label>Ngành đào tạo:</label><select id="filter-nganh" onchange="applyFilters()"><option value="">-- Tất cả ngành --</option></select></div>
+            <div class="filter-group fg-doituong"><label>Đối tượng đầu vào:</label><select id="filter-doituong" onchange="applyFilters()"><option value="">-- Tất cả --</option></select></div>
+            <div class="filter-group fg-status"><label>Trạng thái HS:</label>
+                <select id="filter-hoso" onchange="applyFilters()" title="Trạng thái hồ sơ"><option value="">-- Tất cả --</option><option value="Đủ">Đủ hồ sơ</option><option value="Thiếu">Thiếu hồ sơ</option></select>
+            </div>
+            <div class="filter-group fg-sort"><label>Sắp xếp:</label>
+                <select id="sort-by" onchange="applyFilters()">
+                    <option value="default">Mặc định (Theo STT)</option>
+                    <option value="date_desc" selected>Ngày nộp (Mới nhất)</option>
+                    <option value="date_asc">Ngày nộp (Cũ nhất)</option>
+                    <option value="score_desc">Điểm (Cao -> Thấp)</option>
+                    <option value="status">Trạng thái thẩm định</option>
+                </select>
+            </div>
+            <button class="btn-reset" onclick="resetFilters()">🔄 Xóa Bộ Lọc</button>
         </div>
-        <button class="btn-reset" onclick="resetFilters()">🔄 Xóa Bộ Lọc</button>
     </div>
 
     <div class="action-bar">
@@ -205,7 +217,9 @@
                             <tr><td class="info-label-cell">Hệ đào tạo</td><td class="info-val-cell" id="ws-hedt"></td></tr>
                             <tr><td class="info-label-cell">Hình thức đào tạo</td><td class="info-val-cell" id="ws-hinhthuc"></td></tr>
                             <tr><td class="info-label-cell">KV / Đối tượng ưu tiên</td><td class="info-val-cell" id="ws-kvdt"></td></tr>
-                            <tr><td class="info-label-cell">Trạng thái hồ sơ</td><td class="info-val-cell" id="ws-hoso-status"></td></tr>
+                            <!-- Dòng TRẠNG THÁI HỒ SƠ: khi thiếu hồ sơ sẽ được JS gắn class "missing-docs"
+                                 -> tô nền đỏ nhạt + đổi màu chữ để nổi bật giữa bảng thông tin. -->
+                            <tr id="ws-hoso-row"><td class="info-label-cell">Trạng thái hồ sơ</td><td class="info-val-cell" id="ws-hoso-status"></td></tr>
                             <tr class="link-row" onclick="openDriveLink()"><td class="info-label-cell">Hồ sơ đính kèm</td><td class="info-val-cell">📁 Kiểm tra hồ sơ</td></tr>
                         </tbody>
                     </table>
@@ -213,15 +227,20 @@
             </div>
 
             <div class="ws-section-title">II. KẾT QUẢ ĐIỂM</div>
-            <!-- CỤM NÚT AI SCAN BẢNG ĐIỂM -->
-            <div style="margin-bottom: 15px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; background: #e3f2fd; padding: 10px; border-radius: 4px; border: 1px dashed #2196f3;">
-                <span style="font-weight: bold; color: #0d47a1; font-size: 13px;">🤖 Xét chuyển điểm sơ bộ:</span>
-                <input type="file" id="transcriptFile" accept="image/*, .pdf" style="display: none;" onchange="processTranscriptImage(this)">
-                <button type="button" onclick="document.getElementById('transcriptFile').click()" style="background: #1976d2; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">📝 Scan Bảng Điểm</button>
-                <button type="button" id="btnReopenTranscript" onclick="document.getElementById('largeTableModal').style.display='flex'" style="display: none; background: #9c27b0; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer;">👀 Xem lại kết quả</button>
-                <span id="transcript-scan-status" style="font-size: 12px; color: #0288d1; font-style: italic;"></span>
+            <!-- HÀNG ĐIỂM CHIA LÀM 4 CỘT: 3 ô thông tin điểm (#ws-score-summary) + 1 ô "Xét chuyển điểm sơ bộ"
+                 (nút Scan bảng điểm / Xem lại kết quả) nằm CÙNG HÀNG để tiết kiệm không gian chiều dọc. -->
+            <div class="score-row">
+                <div id="ws-score-summary" class="info-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
+                <div class="scan-box">
+                    <span class="scan-title">🤖 Xét chuyển điểm sơ bộ</span>
+                    <input type="file" id="transcriptFile" accept="image/*, .pdf" style="display: none;" onchange="processTranscriptImage(this)">
+                    <div class="scan-btns">
+                        <button type="button" class="btn-scan" onclick="document.getElementById('transcriptFile').click()">📝 Scan Bảng Điểm</button>
+                        <button type="button" class="btn-scan reopen" id="btnReopenTranscript" style="display: none;" onclick="document.getElementById('largeTableModal').style.display='flex'">👀 Xem lại</button>
+                    </div>
+                    <span id="transcript-scan-status"></span>
+                </div>
             </div>
-            <div id="ws-score-summary" class="info-grid" style="grid-template-columns: 1fr 1fr 1fr;"></div>
             
             <div id="ws-combo-list-container"></div>
 

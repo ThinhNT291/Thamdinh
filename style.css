@@ -13,12 +13,33 @@ h1 { color: var(--primary); margin-top: 0; font-size: 20px; border-bottom: 2px s
 .kpi-value { font-size: 22px; font-weight: bold; color: var(--primary-dark); }
 @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 420px) { .kpi-grid { grid-template-columns: 1fr; } }
-.filter-box { background: #f8fbfb; border: 1px solid #d0e8e6; border-radius: 4px; padding: 10px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-.filter-group { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 140px; }
-.filter-group label { font-size: 10px; font-weight: bold; color: #444; text-transform: uppercase; }
-.filter-group input, .filter-group select { padding: 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; outline: none; }
+
+/* ---------------------------------------------------------
+   BỘ LỌC: Ô TÌM KIẾM SÁT MÉP TRÁI — TOÀN BỘ CÁC Ô LỌC DỒN SANG PHẢI
+   Các ô lọc KHÔNG còn flex:1 (co giãn đều) nữa mà có bề rộng cố định, đã rút gọn:
+   ngày -40%, trạng thái hồ sơ -50%, sắp xếp -30% so với bề rộng cũ (~235px mỗi ô).
+   --------------------------------------------------------- */
+.filter-box { background: #f8fbfb; border: 1px solid #d0e8e6; border-radius: 4px; padding: 10px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; justify-content: space-between; }
+.filter-group { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; min-width: 0; }
+.filter-group label { font-size: 10px; font-weight: bold; color: #444; text-transform: uppercase; white-space: nowrap; }
+.filter-group input, .filter-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; outline: none; }
+
+/* Khối các ô lọc + nút xóa lọc: luôn bị đẩy về sát mép PHẢI */
+.filter-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-left: auto; }
+
+/* Ô tìm kiếm nhanh (Mã SV / Căn cước / Họ tên) — nằm sát mép TRÁI của khối lọc */
+.fg-search { flex: 1 1 260px; min-width: 210px; max-width: 340px; }
+.fg-search input { background: #fff; }
+.fg-search input::placeholder { color: #9aa5a5; font-style: italic; }
+
+.fg-date { width: 140px; }      /* ~235px -> 140px (giảm 40%) */
+.fg-nganh { width: 200px; }
+.fg-doituong { width: 185px; }
+.fg-status { width: 118px; }    /* ~235px -> 118px (giảm 50%) */
+.fg-sort { width: 165px; }      /* ~235px -> 165px (giảm 30%) */
+
 .btn-reset, .btn-export { color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s; }
-.btn-reset { background: #95a5a6; } .btn-export { background: #27ae60; }
+.btn-reset { background: #95a5a6; height: 29px; white-space: nowrap; } .btn-export { background: #27ae60; }
 .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
 
 /* ========================================================= */
@@ -91,6 +112,17 @@ tr:hover { background: #f1f8f8; }
 .link-card { justify-content: center; align-items: center; background: #e0f2f1; border-color: #4db6ac; cursor: pointer; transition: 0.2s; }
 .link-card:hover { background: #b2dfdb; }
 
+/* HÀNG KẾT QUẢ ĐIỂM CHIA 4 CỘT: 3 ô điểm (#ws-score-summary) + 1 ô "Xét chuyển điểm sơ bộ" (scan bảng điểm) */
+.score-row { display: grid; grid-template-columns: 3fr 1fr; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+.scan-box { background: #e3f2fd; border: 1px dashed #2196f3; border-radius: 4px; padding: 4px 8px; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+.scan-title { font-size: 10px; font-weight: bold; color: #0d47a1; text-transform: uppercase; line-height: 1.2; }
+.scan-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.btn-scan { background: #1976d2; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+.btn-scan:hover { background: #0d47a1; }
+.btn-scan.reopen { background: #9c27b0; }
+.btn-scan.reopen:hover { background: #6a1b9a; }
+#transcript-scan-status { font-size: 10px; color: #0288d1; font-style: italic; line-height: 1.25; overflow-wrap: break-word; }
+
 /* THÔNG TIN THÍ SINH — 2 bảng nhãn/nội dung song song */
 .info-tables-wrap { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
 .info-table-box { flex: 1 1 320px; min-width: 280px; background: #fff; border: 1px solid #d0e8e6; border-radius: 4px; overflow: hidden; }
@@ -103,6 +135,13 @@ tr:hover { background: #f1f8f8; }
 .info-table-box tr.link-row { cursor: pointer; transition: 0.2s; }
 .info-table-box tr.link-row td.info-val-cell { color: #00796b; font-weight: bold; }
 .info-table-box tr.link-row:hover { background: #e0f2f1; }
+
+/* Ô "Trạng thái hồ sơ" khi THIẾU HỒ SƠ: nền đỏ nhạt + chữ đỏ đậm để nổi bật hẳn lên trong bảng */
+.info-table-box tr.missing-docs td { background: #ffebee !important; }
+.info-table-box tr.missing-docs td.info-label-cell { color: #b71c1c; border-left: 3px solid #e53935; }
+.info-table-box tr.missing-docs td.info-val-cell,
+.info-table-box tr.missing-docs td.info-val-cell span { color: #b71c1c !important; font-weight: bold; }
+
 .combo-table { width: max-content !important; min-width: 50%; margin: 0 auto; border-collapse: collapse; background: #fff; }
 .combo-table th, .combo-table td { border: 1px solid #e0e0e0; padding: 3px 10px; text-align: center; font-size: 11px; white-space: nowrap; }
 .combo-table th { background: #e0f2f1; font-weight: bold; color: #006666; }
@@ -122,13 +161,27 @@ tr:hover { background: #f1f8f8; }
 .btn-modal-cancel { background: #757575; color: #fff; padding: 6px 15px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; font-size: 12px;}
 .btn-modal-cancel:hover { background: #616161; }
 
+@media (max-width: 1200px) {
+    /* Màn hình vừa: cho các ô lọc co lại theo tỉ lệ thay vì rớt hàng lung tung */
+    .fg-nganh { width: 170px; }
+    .fg-doituong { width: 160px; }
+}
+@media (max-width: 992px) {
+    .score-row { grid-template-columns: 1fr; }
+    .scan-box { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 8px; }
+}
 @media (max-width: 768px) {
     .info-grid { grid-template-columns: 1fr 1fr; }
     .action-buttons { flex-direction: column; }
     .btn-action { width: 100%; min-width: 100%; padding: 12px; font-size: 13px; }
-    .filter-group { min-width: 48%; }
+    /* Bộ lọc trên máy tính bảng/điện thoại: bỏ bề rộng cố định, xếp 2 ô mỗi hàng */
+    .fg-search { flex: 1 1 100%; max-width: 100%; }
+    .filter-controls { width: 100%; margin-left: 0; }
+    .filter-group.fg-date, .filter-group.fg-nganh, .filter-group.fg-doituong,
+    .filter-group.fg-status, .filter-group.fg-sort { width: auto; flex: 1 1 48%; min-width: 45%; }
 }
 @media (max-width: 480px) {
     .info-grid { grid-template-columns: 1fr; }
-    .filter-group { min-width: 100%; }
+    .filter-group.fg-date, .filter-group.fg-nganh, .filter-group.fg-doituong,
+    .filter-group.fg-status, .filter-group.fg-sort { flex: 1 1 100%; min-width: 100%; }
 }
