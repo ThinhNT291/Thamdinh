@@ -681,7 +681,6 @@ function getMissingDocs(row) {
         if(doc.id === 'doc_cccd') keysToCheck = ["BẢN SAO ID", "BẢN SAO CCCD", "BẢN SAO CĂN CƯỚC"];
         if(doc.id === 'doc_phieu_dk') keysToCheck = ["PHIẾU ĐĂNG KÝ DỰ TUYỂN", "PHIẾU ĐK"];
         if(doc.id === 'doc_syll') keysToCheck = ["SƠ YẾU LÝ LỊCH", "SYLL"];
-        if(doc.id === 'doc_khaisinh') keysToCheck = ["BẢN SAO GIẤY KHAI SINH", "KHAI SINH"];
 
         let val = getVal(row, keysToCheck).toUpperCase();
         if (val !== "TRUE" && val !== "1" && val !== "V" && val !== "X" && val !== "CÓ") {
